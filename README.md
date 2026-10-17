@@ -6,39 +6,63 @@ TransportationStaff), the AssistanceRequest hierarchy (MedicalRequest,
 FoodRequest, TransportationRequest), and a FileManager that persists
 everything to local text files.
 
+## Project Structure
+
+```
+PF101-project/
+├── bin/                       # Compiled .class files (git-ignored)
+├── data/                      # Persistent storage (users.txt, requests.txt, etc.)
+├── src/
+│   ├── Main.java              # Application entry point
+│   ├── model/                 # Domain entity classes
+│   │   ├── User.java
+│   │   ├── Resident.java
+│   │   ├── Admin.java
+│   │   ├── Staff.java
+│   │   ├── MedicalStaff.java
+│   │   ├── FoodStaff.java
+│   │   ├── TransportationStaff.java
+│   │   ├── AssistanceRequest.java
+│   │   ├── MedicalRequest.java
+│   │   ├── FoodRequest.java
+│   │   ├── TransportationRequest.java
+│   │   ├── FoodItem.java
+│   │   ├── MedicalItem.java
+│   │   ├── ResidentRequestHistory.java
+│   │   └── StaffRequestHistory.java
+│   ├── data/                  # Data persistence and managers
+│   │   ├── FileManager.java
+│   │   └── RequestManager.java
+│   └── ui/                    # Graphical user interface frames & styling
+│       ├── JButtonStyle.java
+│       ├── LoginFrame.java
+│       ├── RegisterFrame.java
+│       ├── ResidentMenuFrame.java
+│       ├── StaffMenuFrame.java
+│       └── AdminMenuFrame.java
+└── README.md
+```
+
 ## How to compile and run
 
 Requires JDK 11+.
 
+### Option 1: Using javac into bin/ (Recommended)
+
+From the `PF101-project` directory:
+
+```bash
+# Windows PowerShell
+javac -d bin (Get-ChildItem -Path src -Recurse -Filter *.java | ForEach-Object { $_.FullName })
+java -cp bin Main
+
+# Bash / Linux / macOS
+javac -d bin $(find src -name "*.java")
+java -cp bin Main
 ```
-javac *.java
-java Main
-```
 
-On first run, `data/users.txt` and `data/requests.txt` are created and
-seeded with sample accounts:
-
-| Role                | Name           | Password |
-| ------------------- | -------------- | -------- |
-| Admin               | admin          | admin123 |
-| MedicalStaff        | Dr. Santos     | med123   |
-| FoodStaff           | Aling Nena     | food123  |
-| TransportationStaff | Mang Tomas     | trans123 |
-| Resident            | Juan Dela Cruz | res123   |
-
-New residents can also self-register from the login screen.
-
-## Files
-
-Every UML class lives in its own `.java` file in the project root:
-
-- `User.java`, `Resident.java`, `Admin.java`, `Staff.java`,
-  `MedicalStaff.java`, `FoodStaff.java`, `TransportationStaff.java`
-- `AssistanceRequest.java`, `MedicalRequest.java`, `FoodRequest.java`,
-  `TransportationRequest.java`, `FoodItem.java`, `MedicalItem.java`
-- `RequestManager.java`, `FileManager.java`, `Main.java`
-- GUI: `LoginFrame.java`, `RegisterFrame.java`, `ResidentMenuFrame.java`,
-  `AdminMenuFrame.java`, `StaffMenuFrame.java`
+### Option 2: Run directly in VS Code / Antigravity IDE
+Open `src/Main.java` and click **Run** or press `F5`.
 
 ## Design notes
 

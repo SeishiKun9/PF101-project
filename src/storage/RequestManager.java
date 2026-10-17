@@ -1,4 +1,4 @@
-package data;
+package storage;
 
 import model.AssistanceRequest;
 import java.util.List;

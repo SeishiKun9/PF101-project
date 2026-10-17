@@ -1,11 +1,13 @@
 package model;
 
-import data.FileManager;
-import data.RequestManager;
+import storage.FileManager;
+import storage.RequestManager;
 import ui.ResidentMenuFrame;
 
 /**
- * Resident: a barangay constituent who can submit and manage assistance requests.
+ * Resident: a barangay constituent who can submit requests, view only their
+ * own requests/history, and cancel only their own pending requests.
+ * Residents cannot update request details/status or delete requests.
  */
 public class Resident extends User {
     private static final long serialVersionUID = 1L;
@@ -36,9 +38,25 @@ public class Resident extends User {
     }
 
     public void viewMyRequest() { System.out.println(getFullName() + " is viewing their requests."); }
-    public void updateRequest(String requestId) {
-        System.out.println(getFullName() + " is updating request " + requestId + ".");
+
+    /**
+     * Cancels one of this resident's own requests. Only pending requests may
+     * be cancelled; anything else is rejected so status rules hold even for
+     * direct method calls (the UI cancel button enforces the same rule).
+     */
+    public void cancelRequest(AssistanceRequest request) {
+        if (request == null || !residentId.equals(request.getResidentId())) {
+            throw new IllegalArgumentException("Can only cancel your own requests.");
+        }
+        if (!"Pending".equalsIgnoreCase(request.getStatus())) {
+            throw new IllegalStateException("Only pending requests can be cancelled.");
+        }
+        request.updateStatus("Cancelled");
+        FileManager fileManager = new FileManager();
+        fileManager.recordResidentRequestAction(this, request, "Cancelled");
+        new RequestManager(fileManager).updateRequest(request);
     }
+
     public void cancelRequest() { System.out.println(getFullName() + " is cancelling a request."); }
 
     @Override

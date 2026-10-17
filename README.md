@@ -30,8 +30,8 @@ PF101-project/
 │   │   ├── MedicalItem.java
 │   │   ├── ResidentRequestHistory.java
 │   │   └── StaffRequestHistory.java
-│   ├── data/                  # Data persistence and managers
-│   │   ├── FileManager.java
+│   ├── storage/               # Data persistence and managers (package storage)
+│   │   ├── FileManager.java        # Reads/writes root data/*.txt
 │   │   └── RequestManager.java
 │   └── ui/                    # Graphical user interface frames
 │       ├── LoginFrame.java         # Login (admin creates all accounts)

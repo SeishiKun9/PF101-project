@@ -1,6 +1,6 @@
 package ui;
 
-import data.FileManager;
+import storage.FileManager;
 import model.User;
 import javax.swing.*;
 import java.awt.*;

@@ -1,7 +1,7 @@
 package ui;
 
-import data.FileManager;
-import data.RequestManager;
+import storage.FileManager;
+import storage.RequestManager;
 import model.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -29,7 +29,8 @@ public class ResidentMenuFrame extends JFrame {
     private final JTextField requestSearchField = new JTextField(14);
     private List<AssistanceRequest> currentRequests = new ArrayList<>();
 
-    private final JButton updateBtn = new JButton("Update Request");
+    private final JButton cancelReqBtn = new JButton("Cancel Request");
+    private final JButton updateReqBtn = new JButton("Update Request");
 
     public ResidentMenuFrame(Resident resident) {
         super("Resident Menu - " + resident.getFullName());
@@ -187,13 +188,15 @@ public class ResidentMenuFrame extends JFrame {
         detailsScroll.setBorder(null);
         detailsScroll.getViewport().setBackground(Color.WHITE);
 
-        // Bottom right: Update only (Cancel is inside Update dialog)
-        styleActionButton(updateBtn, false);
+        // Bottom right: Update or cancel own requests, only while they are Pending.
+        styleActionButton(updateReqBtn, false);
+        styleActionButton(cancelReqBtn, false);
 
         JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         bottomActions.setBackground(Color.WHITE);
         bottomActions.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
-        bottomActions.add(updateBtn);
+        bottomActions.add(updateReqBtn);
+        bottomActions.add(cancelReqBtn);
 
         rightPanel.add(detailsTitle, BorderLayout.NORTH);
         rightPanel.add(detailsScroll, BorderLayout.CENTER);
@@ -202,7 +205,7 @@ public class ResidentMenuFrame extends JFrame {
         splitPane.setLeftComponent(leftPanel);
         splitPane.setRightComponent(rightPanel);
 
-        JLabel footerNote = new JLabel("  Note: Requests can be modified or cancelled only while their status is 'Pending'.");
+        JLabel footerNote = new JLabel("  Note: Requests can be updated or cancelled only while their status is 'Pending'.");
         footerNote.setFont(footerNote.getFont().deriveFont(Font.PLAIN, 11f));
         footerNote.setForeground(new Color(100, 116, 139));
         footerNote.setBorder(BorderFactory.createEmptyBorder(8, 16, 10, 16));
@@ -225,8 +228,9 @@ public class ResidentMenuFrame extends JFrame {
         submitBtn.addActionListener(e -> submitRequestDialog());
         submitMenuItem.addActionListener(e -> submitRequestDialog());
 
-        updateBtn.addActionListener(e -> updateSelectedDialog());
-        updateMenuItem.addActionListener(e -> updateSelectedDialog());
+        updateReqBtn.addActionListener(e -> updateSelectedRequest());
+        updateMenuItem.addActionListener(e -> updateSelectedRequest());
+        cancelReqBtn.addActionListener(e -> cancelSelectedRequest());
 
         cancelMenuItem.addActionListener(e -> cancelSelectedRequest());
 
@@ -283,8 +287,10 @@ public class ResidentMenuFrame extends JFrame {
         if (idx >= 0 && idx < currentRequests.size()) {
             req = currentRequests.get(idx);
         }
-        boolean pending = req != null && "Pending".equalsIgnoreCase(req.getStatus());
-        styleActionButton(updateBtn, pending);
+        // Update and cancel are both allowed only while the request is Pending.
+        boolean pending = req != null && isPending(req);
+        styleActionButton(updateReqBtn, pending);
+        styleActionButton(cancelReqBtn, pending);
     }
 
     private void showSelectedDetails() {
@@ -489,6 +495,111 @@ public class ResidentMenuFrame extends JFrame {
         return currentRequests.get(idx);
     }
 
+    /** True only for this resident's own request whose status is still Pending. */
+    private boolean isPending(AssistanceRequest req) {
+        return "Pending".equalsIgnoreCase(req.getStatus())
+                && resident.getResidentId().equals(req.getResidentId());
+    }
+
+    private void updateSelectedRequest() {
+        AssistanceRequest req = getSelectedRequest();
+        if (req == null) return;
+        if (!isPending(req)) {
+            JOptionPane.showMessageDialog(this, "Only pending requests can be updated.",
+                    "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        updateRequestDialog(req);
+    }
+
+    /** Re-reads the stored request so a status change made while the dialog was open is caught. */
+    private AssistanceRequest findCurrentRequest(String requestId) {
+        for (AssistanceRequest r : requestManager.getAllRequests()) {
+            if (r.getRequestId().equals(requestId)) return r;
+        }
+        return null;
+    }
+
+    private void updateRequestDialog(AssistanceRequest original) {
+        String type;
+        if (original instanceof FoodRequest) type = "Food";
+        else if (original instanceof MedicalRequest) type = "Medical";
+        else type = "Transportation";
+
+        // Pre-fill the form from the stored request.
+        RequestFormFields fields = new RequestFormFields();
+        fields.setFromRequest(original);
+        if (original instanceof FoodRequest) {
+            fields.setFoodItems(((FoodRequest) original).getFoodItems());
+        } else if (original instanceof MedicalRequest) {
+            fields.setMedicalItems(((MedicalRequest) original).getMedicalItems());
+        } else if (original instanceof TransportationRequest) {
+            TransportationRequest tr = (TransportationRequest) original;
+            fields.pickupField.setText(tr.getPickupLocation());
+            fields.destinationField.setText(tr.getDestination());
+            fields.passengerCountField.setText(String.valueOf(tr.getPassengerCount()));
+        }
+
+        // The type is fixed for an update: a label instead of the type picker.
+        JLabel typeLbl = new JLabel(type);
+        JPanel panel = new JPanel();
+        Runnable rebuildForm = () -> rebuildRequestForm(panel, type, fields, typeLbl);
+        rebuildForm.run();
+
+        JScrollPane formScroll = new JScrollPane(panel);
+        formScroll.setPreferredSize(new Dimension(580, 460));
+        formScroll.setBorder(BorderFactory.createLineBorder(new Color(203, 213, 225)));
+
+        JDialog dialog = new JDialog(this, "Update Assistance Request", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.add(formScroll, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+        buttons.setBackground(Color.WHITE);
+        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(203, 213, 225)));
+        JButton saveButton = createDarkBlueButton("Save Changes");
+        JButton cancelButton = createDarkBlueButton("Cancel");
+        buttons.add(cancelButton);
+        buttons.add(saveButton);
+        dialog.add(buttons, BorderLayout.SOUTH);
+
+        saveButton.addActionListener(e -> {
+            if (!hasRequiredFields(type, fields)) return;
+
+            // Re-check the stored status: staff may have changed it while this dialog was open.
+            AssistanceRequest latest = findCurrentRequest(original.getRequestId());
+            if (latest == null || !isPending(latest)) {
+                JOptionPane.showMessageDialog(dialog,
+                        "This request is no longer pending, so it cannot be updated.",
+                        "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
+                dialog.dispose();
+                refreshList();
+                return;
+            }
+
+            AssistanceRequest updated = createRequest(type, original.getRequestId(), fields,
+                    "Pending", original.getDateRequested());
+            try {
+                requestManager.updateRequest(updated);
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(dialog, "Could not save the update: " + ex.getMessage(),
+                        "Save Failed", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            fileManager.recordResidentRequestAction(resident, updated, "Request updated");
+            JOptionPane.showMessageDialog(dialog, "Request " + original.getRequestId() + " updated.",
+                    "Request Updated", JOptionPane.INFORMATION_MESSAGE);
+            refreshList();
+            dialog.dispose();
+        });
+        cancelButton.addActionListener(e -> dialog.dispose());
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(610, 540));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
     private void cancelSelectedRequest() {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
@@ -498,91 +609,6 @@ public class ResidentMenuFrame extends JFrame {
             return;
         }
         cancelRequest(req);
-    }
-
-    private void updateSelectedDialog() {
-        AssistanceRequest req = getSelectedRequest();
-        if (req == null) return;
-        resident.updateRequest(req.getRequestId());
-        if (!"Pending".equalsIgnoreCase(req.getStatus())) {
-            JOptionPane.showMessageDialog(this, "Only pending requests can be updated.",
-                    "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        RequestFormFields fields = new RequestFormFields();
-        fields.setFromRequest(req);
-        if (req instanceof MedicalRequest) {
-            fields.setMedicalItems(((MedicalRequest) req).getMedicalItems());
-        } else if (req instanceof FoodRequest) {
-            fields.setFoodItems(((FoodRequest) req).getFoodItems());
-        } else if (req instanceof TransportationRequest) {
-            TransportationRequest transportation = (TransportationRequest) req;
-            fields.pickupField.setText(transportation.getPickupLocation());
-            fields.destinationField.setText(transportation.getDestination());
-            fields.passengerCountField.setText(String.valueOf(transportation.getPassengerCount()));
-        }
-
-        JPanel panel = new JPanel();
-        rebuildRequestForm(panel, req.getType(), fields, new JLabel(toAssistanceLabel(req.getType())));
-        JScrollPane formScroll = new JScrollPane(panel);
-        formScroll.setPreferredSize(new Dimension(560, 420));
-        formScroll.setBorder(BorderFactory.createEmptyBorder());
-        formScroll.getVerticalScrollBar().setUnitIncrement(16);
-
-        JDialog dialog = new JDialog(this, "Update Request - " + req.getRequestId(), true);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setLayout(new BorderLayout());
-        dialog.getContentPane().setBackground(Color.WHITE);
-        dialog.add(formScroll, BorderLayout.CENTER);
-
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
-        buttons.setBackground(Color.WHITE);
-        buttons.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                BorderFactory.createEmptyBorder(4, 16, 4, 8)));
-        JButton saveBtn = createDarkBlueButton("Save Changes");
-        JButton cancelReqBtn = createDarkBlueButton("Cancel Request");
-        JButton closeBtn = createDarkBlueButton("Close");
-        buttons.add(saveBtn);
-        buttons.add(cancelReqBtn);
-        buttons.add(closeBtn);
-        dialog.add(buttons, BorderLayout.SOUTH);
-
-        final boolean[] saved = {false};
-        saveBtn.addActionListener(e -> {
-            if (!hasRequiredFields(req.getType(), fields)) return;
-            req.setLocation(fields.locationField.getText().trim());
-            req.setTimeNeeded(parseWhenNeeded(fields.whenNeededField.getText().trim()));
-            req.setAdditionalDetails(fields.additionalDetailsArea.getText().trim());
-            if (req instanceof MedicalRequest) {
-                ((MedicalRequest) req).setMedicalItems(fields.readMedicalItems());
-            } else if (req instanceof FoodRequest) {
-                ((FoodRequest) req).setFoodItems(fields.readFoodItems());
-            } else if (req instanceof TransportationRequest) {
-                TransportationRequest transportation = (TransportationRequest) req;
-                transportation.setPickupLocation(fields.pickupField.getText().trim());
-                transportation.setDestination(fields.destinationField.getText().trim());
-                transportation.setPassengerCount(Integer.parseInt(fields.passengerCountField.getText().trim()));
-            }
-            requestManager.updateRequest(req);
-            fileManager.recordResidentRequestAction(resident, req, "Updated");
-            JOptionPane.showMessageDialog(dialog, "Request updated successfully.");
-            saved[0] = true;
-            dialog.dispose();
-            refreshList();
-        });
-        cancelReqBtn.addActionListener(e -> {
-            resident.cancelRequest();
-            cancelRequest(req);
-            dialog.dispose();
-        });
-        closeBtn.addActionListener(e -> dialog.dispose());
-
-        dialog.pack();
-        dialog.setMinimumSize(new Dimension(600, 520));
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
     }
 
     private void submitRequestDialog() {
@@ -1030,9 +1056,14 @@ public class ResidentMenuFrame extends JFrame {
         int confirm = JOptionPane.showConfirmDialog(this, "Cancel request " + req.getRequestId() + "?",
                 "Confirm Cancel", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
-            req.updateStatus("Cancelled");
-            requestManager.updateRequest(req);
-            fileManager.recordResidentRequestAction(resident, req, "Cancelled");
+            try {
+                // Ownership + pending-status enforced inside Resident.cancelRequest.
+                resident.cancelRequest(req);
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        "Cancel Not Allowed", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             JOptionPane.showMessageDialog(this, "Request marked as cancelled.");
             refreshList();
         }

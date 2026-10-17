@@ -1,0 +1,5 @@
+2026-10-17T22:20:26|Created user RSD3001 (Resident)|ADM1000
+2026-10-17T22:21:16|Created user RSD3002 (Resident)|ADM1000
+2026-10-17T22:21:31|Deleted user RSD3002 (MAry Poppins)|ADM1000
+2026-10-17T22:21:59|Deleted request REQ4006|ADM1000
+2026-10-17T23:08:24|Filed Medical request REQ4006 for resident RSD3001|ADM1000

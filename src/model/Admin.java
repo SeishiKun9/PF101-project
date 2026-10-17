@@ -1,13 +1,10 @@
 package model;
 
 import storage.FileManager;
-import storage.RequestManager;
 import ui.AdminMenuFrame;
 import java.util.List;
 
-/**
- * Admin: manages user accounts and has oversight of all requests.
- */
+
 public class Admin extends User {
     private static final long serialVersionUID = 1L;
     private String adminId;
@@ -43,56 +40,6 @@ public class Admin extends User {
 
     public void viewAllRequest() { System.out.println(getFullName() + " is viewing all requests."); }
     public void viewUserHistory() { System.out.println(getFullName() + " is viewing a user's history."); }
-
-    /**
-     * Updates the status of any request (any assistance type), including
-     * cancellation. The change is recorded in staff history under this
-     * admin's ID so the audit trail keeps old/new status and timestamp.
-     */
-    public void updateRequestStatus(AssistanceRequest request, String newStatus) {
-        if (request == null) throw new IllegalArgumentException("Request is required.");
-        if (newStatus == null || newStatus.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status is required.");
-        }
-        request.updateStatus(newStatus);
-        FileManager fileManager = new FileManager();
-        fileManager.recordStaffRequestAction(
-                new Staff(getFullName(), getPassword(), adminId, request.getType()),
-                request, newStatus);
-        new RequestManager(fileManager).updateRequest(request);
-    }
-
-    /** Cancels any request (any assistance type). Recorded in history. */
-    public void cancelRequest(AssistanceRequest request) {
-        updateRequestStatus(request, "Cancelled");
-    }
-
-    /**
-     * Deletes any request (any assistance type).
-     * Recorded in staff history first so the audit trail survives deletion.
-     */
-    public void deleteRequest(AssistanceRequest request) {
-        if (request == null) throw new IllegalArgumentException("Request is required.");
-        FileManager fileManager = new FileManager();
-        fileManager.recordStaffRequestAction(
-                new Staff(getFullName(), getPassword(), adminId, request.getType()),
-                request, "Deleted");
-        fileManager.deleteRequestFromFile(request.getRequestId());
-    }
-
-    /**
-     * Files an assistance request on behalf of a resident (walk-in / phone-in).
-     * The request must carry the resident's ID; the admin never files as themselves.
-     */
-    public void fileRequestFor(String residentId, AssistanceRequest request) {
-        if (residentId == null || residentId.trim().isEmpty()) {
-            throw new IllegalArgumentException("A resident must be selected.");
-        }
-        if (request == null || !residentId.equals(request.getResidentId())) {
-            throw new IllegalArgumentException("Request must belong to the selected resident.");
-        }
-        new RequestManager(new FileManager()).addRequest(request);
-    }
 
     @Override
     public void showMenu() {

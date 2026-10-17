@@ -2,9 +2,6 @@ package model;
 
 import ui.StaffMenuFrame;
 
-/**
- * MedicalStaff: handles Medical-type assistance requests. Overrides showMenu().
- */
 public class MedicalStaff extends Staff {
     public MedicalStaff(String name, String password, String staffId) {
         super(name, password, "MedicalStaff", staffId, "Medical");

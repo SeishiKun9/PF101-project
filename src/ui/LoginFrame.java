@@ -186,7 +186,6 @@ public class LoginFrame extends JFrame {
         String normalizedId = userId.toUpperCase();
         return normalizedId.startsWith("ADM")
             || normalizedId.startsWith("STF")
-            || normalizedId.startsWith("RSD")
-            || normalizedId.startsWith("RES");
+            || normalizedId.startsWith("RSD");
     }
 }

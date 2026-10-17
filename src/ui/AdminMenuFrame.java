@@ -1124,8 +1124,8 @@ public class AdminMenuFrame extends JFrame {
             dialog.dispose();
         });
         deleteBtn.addActionListener(e -> {
-            deleteUser(u);
-            dialog.dispose();
+            // Stay open if the delete was blocked (e.g. last remaining admin).
+            if (deleteUser(u)) dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
 
@@ -1161,15 +1161,33 @@ public class AdminMenuFrame extends JFrame {
         return user.getUserId();
     }
 
-    private void deleteUser(User u) {
+    /** Number of Admin accounts currently stored. */
+    private int countAdmins() {
+        int count = 0;
+        for (User existing : fileManager.readUsers()) {
+            if (existing instanceof Admin) count++;
+        }
+        return count;
+    }
+
+    /** Deletes the user after confirmation. Returns true only if the user was deleted. */
+    private boolean deleteUser(User u) {
+        // The system must always keep at least one Admin account.
+        if (u instanceof Admin && countAdmins() <= 1) {
+            JOptionPane.showMessageDialog(this,
+                    "You cannot delete the last Admin account. At least one Admin must remain.",
+                    "Delete Not Allowed", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Delete user " + u.getFullName() + "? This action cannot be undone.",
                 "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) return;
+        if (confirm != JOptionPane.YES_OPTION) return false;
         String userId = getUserId(u);
         admin.deleteUser(userId);
         logAdminAction("Deleted user " + userId + " (" + u.getFullName() + ")");
         refreshUserList();
+        return true;
     }
 
     private void viewSelectedUserHistory() {
@@ -1561,17 +1579,32 @@ public class AdminMenuFrame extends JFrame {
         }
         JComboBox<String> typeBox = new JComboBox<>(new String[]{"Food", "Medical", "Transport"});
         RequestFormHelper.Fields fields = new RequestFormHelper.Fields();
+        // Fields() starts with food units; start with the selected type's item row instead.
+        fields.itemRows.clear();
+        String firstType = RequestFormHelper.toRequestType((String) typeBox.getSelectedItem());
+        if (!"Transportation".equals(firstType)) {
+            fields.itemRows.add(newAdminItemRow(firstType));
+        }
         JPanel formPanel = new JPanel();
         Runnable rebuild = () -> rebuildAdminRequestForm(formPanel,
                 (String) typeBox.getSelectedItem(), fields);
-        typeBox.addActionListener(e -> rebuild.run());
+        typeBox.addActionListener(e -> {
+            // Item names and units differ by type, so start the item list fresh on a type change.
+            String newType = RequestFormHelper.toRequestType((String) typeBox.getSelectedItem());
+            fields.itemRows.clear();
+            if (!"Transportation".equals(newType)) {
+                fields.itemRows.add(newAdminItemRow(newType));
+            }
+            rebuild.run();
+        });
         rebuild.run();
 
-        JPanel top = new JPanel(new GridLayout(0, 1, 0, 6));
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
         top.setOpaque(false);
         top.setBorder(BorderFactory.createEmptyBorder(4, 4, 12, 4));
-        top.add(formRow("Resident", residentBox));
-        top.add(formRow("Assistance Type", typeBox));
+        top.add(requestFormRow("Resident", residentBox));
+        top.add(requestFormRow("Assistance Type", typeBox));
 
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -1579,6 +1612,7 @@ public class AdminMenuFrame extends JFrame {
         body.setBorder(BorderFactory.createEmptyBorder(16, 20, 8, 20));
         body.add(top);
         JScrollPane formScroll = new JScrollPane(formPanel);
+        formScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
         formScroll.setPreferredSize(new Dimension(560, 380));
         formScroll.setBorder(BorderFactory.createLineBorder(new Color(203, 213, 225)));
         formScroll.getVerticalScrollBar().setUnitIncrement(16);
@@ -1634,26 +1668,93 @@ public class AdminMenuFrame extends JFrame {
         dialog.setVisible(true);
     }
 
+    private static final String[] ADMIN_FOOD_UNITS = {"kg", "pcs", "pack", "g", "liter", "ml"};
+    private static final String[] ADMIN_MEDICAL_UNITS = {"pcs", "box", "bottle", "pack", "tablet", "ml"};
+
+    /** New item row using the unit list for the given request type. */
+    private RequestFormHelper.ItemRow newAdminItemRow(String type) {
+        return new RequestFormHelper.ItemRow("Food".equals(type) ? ADMIN_FOOD_UNITS : ADMIN_MEDICAL_UNITS);
+    }
+
+    /** Form row for the request dialog: label column, then input sized to its content. */
+    private JPanel requestFormRow(String label, JComponent input) {
+        JPanel row = new JPanel(new BorderLayout(16, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        int h = Math.max(36, input.getPreferredSize().height + 4);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, h + 8));
+        row.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(new Font("SansSerif", Font.BOLD, 12));
+        lbl.setForeground(DARK_BLUE);
+        lbl.setPreferredSize(new Dimension(150, 28));
+        lbl.setVerticalAlignment(SwingConstants.TOP);
+        row.add(lbl, BorderLayout.WEST);
+        row.add(input, BorderLayout.CENTER);
+        return row;
+    }
+
     private void rebuildAdminRequestForm(JPanel panel, String selectedType,
                                          RequestFormHelper.Fields fields) {
         String type = RequestFormHelper.toRequestType(selectedType);
         panel.removeAll();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
+
+        // Section heading, left aligned.
         JLabel heading = new JLabel((type + " Assistance").toUpperCase());
         heading.setFont(new Font("SansSerif", Font.BOLD, 14));
         heading.setForeground(DARK_BLUE);
         heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heading.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
         panel.add(heading);
+        panel.add(Box.createVerticalStrut(4));
+        JSeparator sep = new JSeparator();
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        sep.setForeground(new Color(220, 225, 230));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(sep);
         panel.add(Box.createVerticalStrut(14));
-        if ("Food".equals(type) || "Medical".equals(type)) {
-            String[] units = "Food".equals(type)
-                    ? new String[]{"kg", "pcs", "pack", "g", "liter", "ml"}
-                    : new String[]{"pcs", "box", "bottle", "pack", "tablet", "ml"};
-            if (fields.itemRows.isEmpty()) {
-                fields.itemRows.add(new RequestFormHelper.ItemRow(units));
+
+        if (!"Transportation".equals(type)) {
+            String itemLabel = "Food".equals(type) ? "Food Item" : "Medical Item";
+
+            // "Requested Items" header with + and - buttons.
+            JPanel itemHeader = new JPanel(new BorderLayout());
+            itemHeader.setOpaque(false);
+            itemHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+            itemHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+            JLabel itemsLbl = new JLabel("Requested Items");
+            itemsLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
+            itemsLbl.setForeground(DARK_BLUE);
+            itemHeader.add(itemsLbl, BorderLayout.WEST);
+            JPanel itemBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+            itemBtns.setOpaque(false);
+            JButton addItemBtn = createDarkBlueButton("+");
+            JButton removeItemBtn = createDarkBlueButton("-");
+            removeItemBtn.setEnabled(fields.itemRows.size() > 1);
+            itemBtns.add(addItemBtn);
+            itemBtns.add(removeItemBtn);
+            itemHeader.add(itemBtns, BorderLayout.EAST);
+            panel.add(itemHeader);
+            panel.add(Box.createVerticalStrut(8));
+
+            // Column headers, shown once
+            JPanel colHeader = new JPanel(new GridLayout(1, 3, 12, 0));
+            colHeader.setOpaque(false);
+            colHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+            colHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+            for (String h : new String[]{itemLabel, "Quantity", "Unit"}) {
+                JLabel hl = new JLabel(h);
+                hl.setFont(new Font("SansSerif", Font.BOLD, 11));
+                hl.setForeground(new Color(100, 116, 139));
+                colHeader.add(hl);
             }
+            panel.add(colHeader);
+            panel.add(Box.createVerticalStrut(6));
+
+            // Item rows
             for (RequestFormHelper.ItemRow row : fields.itemRows) {
                 JPanel itemRow = new JPanel(new GridLayout(1, 3, 12, 0));
                 itemRow.setOpaque(false);
@@ -1664,24 +1765,43 @@ public class AdminMenuFrame extends JFrame {
                 itemRow.add(row.nameField);
                 itemRow.add(row.quantityField);
                 itemRow.add(row.unitBox);
-                panel.add(new JLabel("Item / Qty / Unit:"));
                 panel.add(itemRow);
                 panel.add(Box.createVerticalStrut(6));
             }
+
+            addItemBtn.addActionListener(e -> {
+                fields.itemRows.add(newAdminItemRow(type));
+                rebuildAdminRequestForm(panel, selectedType, fields);
+            });
+            removeItemBtn.addActionListener(e -> {
+                if (fields.itemRows.size() > 1) {
+                    fields.itemRows.remove(fields.itemRows.size() - 1);
+                    rebuildAdminRequestForm(panel, selectedType, fields);
+                }
+            });
+
             panel.add(Box.createVerticalStrut(10));
             styleFormField(fields.locationField);
-            panel.add(formRow("Location / Address", fields.locationField));
+            panel.add(requestFormRow("Location / Address", fields.locationField));
         } else {
             styleFormField(fields.pickupField);
             styleFormField(fields.destinationField);
             styleFormField(fields.passengerCountField);
-            panel.add(formRow("Pickup Location", fields.pickupField));
-            panel.add(formRow("Destination", fields.destinationField));
-            panel.add(formRow("No. of Passengers", fields.passengerCountField));
+            panel.add(requestFormRow("Pickup Location", fields.pickupField));
+            panel.add(requestFormRow("Destination", fields.destinationField));
+            panel.add(requestFormRow("No. of Passengers", fields.passengerCountField));
         }
+
         panel.add(Box.createVerticalStrut(6));
         styleFormField(fields.whenNeededField);
-        panel.add(formRow("Time Needed (yyyy-MM-dd HH:mm)", fields.whenNeededField));
+        panel.add(requestFormRow("Time Needed", fields.whenNeededField));
+        JLabel hint = new JLabel("Format: yyyy-MM-dd HH:mm");
+        hint.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        hint.setForeground(new Color(148, 163, 184));
+        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+        hint.setBorder(BorderFactory.createEmptyBorder(0, 160, 8, 0));
+        panel.add(hint);
+
         fields.additionalDetailsArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
         fields.additionalDetailsArea.setLineWrap(true);
         fields.additionalDetailsArea.setWrapStyleWord(true);
@@ -1689,7 +1809,8 @@ public class AdminMenuFrame extends JFrame {
         JScrollPane detailsScroll = new JScrollPane(fields.additionalDetailsArea);
         detailsScroll.setBorder(BorderFactory.createLineBorder(new Color(180, 190, 210), 1));
         detailsScroll.setPreferredSize(new Dimension(320, 72));
-        panel.add(formRow("Additional Details", detailsScroll));
+        detailsScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        panel.add(requestFormRow("Additional Details", detailsScroll));
         panel.revalidate();
         panel.repaint();
     }

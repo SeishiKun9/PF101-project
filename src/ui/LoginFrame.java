@@ -12,6 +12,7 @@ import java.util.List;
  * Modern login window shared by every role, with resident self-registration support.
  */
 public class LoginFrame extends JFrame {
+    private static final long serialVersionUID = 1L;
     private final FileManager fileManager;
     private final JTextField userIdField = new JTextField();
     private final JPasswordField passwordField = new JPasswordField();

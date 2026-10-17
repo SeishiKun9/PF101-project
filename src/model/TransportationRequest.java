@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 /** Transportation assistance request for a pickup, destination, and passenger count. */
 public class TransportationRequest extends AssistanceRequest {
+    private static final long serialVersionUID = 1L;
     private String pickupLocation;
     private String destination;
     private int passengerCount;

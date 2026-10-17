@@ -12,6 +12,7 @@ import java.util.List;
  * Admin's createUser() capability).
  */
 public class RegisterFrame extends JFrame {
+    private static final long serialVersionUID = 1L;
     private final FileManager fileManager;
     private final JFrame loginFrame;
 

@@ -13,6 +13,7 @@ import java.util.List;
  * and view a specific resident's request history.
  */
 public class AdminMenuFrame extends JFrame {
+    private static final long serialVersionUID = 1L;
     private final Admin admin;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);

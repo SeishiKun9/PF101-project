@@ -13,6 +13,7 @@ import java.util.List;
  * and update the status of requests matching their assigned type.
  */
 public class StaffMenuFrame extends JFrame {
+    private static final long serialVersionUID = 1L;
     private static final Dimension REQUEST_DIALOG_SIZE = new Dimension(560, 390);
     private final Staff staff;
     private final FileManager fileManager = new FileManager();

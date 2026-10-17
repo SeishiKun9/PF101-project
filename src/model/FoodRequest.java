@@ -7,6 +7,7 @@ import java.util.List;
 
 /** Food assistance request containing one or more food items. */
 public class FoodRequest extends AssistanceRequest {
+    private static final long serialVersionUID = 1L;
     private final List<FoodItem> foodItems;
 
     public FoodRequest(String requestId, String residentId, String location, LocalDateTime timeNeeded,

@@ -7,6 +7,7 @@ import java.util.List;
 
 /** Medical assistance request containing one or more medical items. */
 public class MedicalRequest extends AssistanceRequest {
+    private static final long serialVersionUID = 1L;
     private final List<MedicalItem> medicalItems;
 
     public MedicalRequest(String requestId, String residentId, String location, LocalDateTime timeNeeded,

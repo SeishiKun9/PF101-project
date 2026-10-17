@@ -4,6 +4,7 @@ import ui.StaffMenuFrame;
 
 /** TransportationStaff: handles Transportation-type assistance requests. Overrides showMenu(). */
 public class TransportationStaff extends Staff {
+    private static final long serialVersionUID = 1L;
     public TransportationStaff(String name, String password, String staffId) {
         super(name, password, "TransportationStaff", staffId, "Transportation");
     }

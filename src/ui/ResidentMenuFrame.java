@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ResidentMenuFrame extends JFrame {
+    private static final long serialVersionUID = 1L;
     private final Resident resident;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);

@@ -8,6 +8,7 @@ import java.util.List;
  * Admin: manages user accounts and has oversight of all requests.
  */
 public class Admin extends User {
+    private static final long serialVersionUID = 1L;
     private String adminId;
 
     public Admin(String name, String password, String adminId) {

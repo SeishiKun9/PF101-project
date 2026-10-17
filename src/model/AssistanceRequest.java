@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 
 
 public abstract class AssistanceRequest implements Serializable {
+    private static final long serialVersionUID = 1L;
     public static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     private String requestId;

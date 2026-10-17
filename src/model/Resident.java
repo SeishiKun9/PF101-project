@@ -8,6 +8,7 @@ import ui.ResidentMenuFrame;
  * Resident: a barangay constituent who can submit and manage assistance requests.
  */
 public class Resident extends User {
+    private static final long serialVersionUID = 1L;
     private String residentId;
     private String address;
     private String contactNo;

@@ -7,6 +7,7 @@ import ui.StaffMenuFrame;
  * of a specific assigned type (Medical, Food, Transportation).
  */
 public class Staff extends User {
+    private static final long serialVersionUID = 1L;
     private String staffId;
     private String assignedType;
 

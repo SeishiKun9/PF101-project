@@ -4,39 +4,39 @@ import data.FileManager;
 import data.RequestManager;
 import model.*;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * GUI shared by MedicalStaff, FoodStaff, and TransportationStaff: view, search,
- * and update the status of requests matching their assigned type.
+ * GUI shared by MedicalStaff, FoodStaff, and TransportationStaff.
+ * Styled to match ResidentMenuFrame (dark blue only).
  */
 public class StaffMenuFrame extends JFrame {
     private static final long serialVersionUID = 1L;
-    private static final Dimension REQUEST_DIALOG_SIZE = new Dimension(560, 390);
     private final Staff staff;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);
 
-    private final DefaultTableModel tableModel =
-            new DefaultTableModel(new Object[]{"Request ID", "Resident ID", "Details", "Status"}, 0) {
-                @Override public boolean isCellEditable(int r, int c) { return false; }
-            };
-    private final JTable table = new JTable(tableModel);
-    private final JTextField searchField = new JTextField(16);
+    private static final Color DARK_BLUE = new Color(15, 40, 80);
+    private static final Color DARK_BLUE_BTN = new Color(25, 70, 140);
+    private static final Color GRAY_DISABLED = new Color(148, 163, 184);
 
-    // KPI Stat Labels
-    private final JLabel totalAssignedLabel = new JLabel("0");
-    private final JLabel pendingCountLabel = new JLabel("0");
-    private final JLabel inProgressCountLabel = new JLabel("0");
-    private final JLabel completedCountLabel = new JLabel("0");
+    private final DefaultListModel<String> requestListModel = new DefaultListModel<>();
+    private final JList<String> requestList = new JList<>(requestListModel);
+    private final JPanel detailsPanel = new JPanel();
+    private final JLabel detailsPlaceholder = new JLabel("Select a request to view details", SwingConstants.CENTER);
+    private final JTextField searchField = new JTextField(14);
+    private List<AssistanceRequest> currentRequests = new ArrayList<>();
+    private final JButton updateStatusBtn = new JButton("Update Status");
 
     public StaffMenuFrame(Staff staff) {
         super("Staff Menu - " + staff.getFullName() + " (" + staff.getAssignedType() + ")");
         this.staff = staff;
         buildUI();
-        refreshTable(null);
+        refreshList(null);
     }
 
     private void buildUI() {
@@ -45,310 +45,385 @@ public class StaffMenuFrame extends JFrame {
         setMinimumSize(new Dimension(860, 560));
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
-        getContentPane().setBackground(JButtonStyle.BG_PAGE);
+        getContentPane().setBackground(new Color(245, 247, 250));
 
-        // NATIVE MENU BAR (Staff Menu)
         JMenuBar menuBar = new JMenuBar();
         menuBar.setBackground(Color.WHITE);
-        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JButtonStyle.BORDER_LIGHT));
-
+        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 225, 230)));
         JMenu staffMenu = new JMenu("Staff Menu");
         staffMenu.setFont(staffMenu.getFont().deriveFont(Font.BOLD, 12f));
-
         JMenuItem updateMenuItem = new JMenuItem("Update Request Status");
-        JMenuItem viewMenuItem = new JMenuItem("View Request Details");
         JMenuItem refreshMenuItem = new JMenuItem("Refresh Requests");
         JMenuItem logoutMenuItem = new JMenuItem("Logout");
-
         staffMenu.add(updateMenuItem);
-        staffMenu.add(viewMenuItem);
         staffMenu.addSeparator();
         staffMenu.add(refreshMenuItem);
         staffMenu.add(logoutMenuItem);
         menuBar.add(staffMenu);
         setJMenuBar(menuBar);
 
-        // TOP HEADER
+        // Dark blue header
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Color.WHITE);
-        headerPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, JButtonStyle.BORDER_LIGHT),
-                BorderFactory.createEmptyBorder(16, 24, 16, 24)));
-
-        JPanel userInfoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
-        userInfoPanel.setOpaque(false);
-
-        JPanel avatar = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(236, 253, 245));
-                g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
-                g2.setColor(new Color(167, 243, 208));
-                g2.drawOval(0, 0, getWidth() - 1, getHeight() - 1);
-                g2.setColor(new Color(5, 150, 105));
-                g2.setFont(new Font("SansSerif", Font.BOLD, 15));
-                FontMetrics fm = g2.getFontMetrics();
-                String in = getInitials(staff.getFullName());
-                g2.drawString(in, (getWidth() - fm.stringWidth(in)) / 2, (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
-                g2.dispose();
-            }
-        };
-        avatar.setPreferredSize(new Dimension(44, 44));
-        avatar.setOpaque(false);
-        userInfoPanel.add(avatar);
+        headerPanel.setBackground(DARK_BLUE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 28, 16, 28));
 
         JPanel nameAndMeta = new JPanel();
         nameAndMeta.setLayout(new BoxLayout(nameAndMeta, BoxLayout.Y_AXIS));
         nameAndMeta.setOpaque(false);
-
-        JPanel titleRoleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        titleRoleRow.setOpaque(false);
         JLabel nameLbl = new JLabel(staff.getFullName());
-        nameLbl.setFont(nameLbl.getFont().deriveFont(Font.BOLD, 17f));
-        nameLbl.setForeground(JButtonStyle.TEXT_DARK);
-
-        JLabel rolePill = new JLabel(" " + staff.getAssignedType().toUpperCase() + " STAFF ");
-        rolePill.setFont(rolePill.getFont().deriveFont(Font.BOLD, 10.5f));
-        rolePill.setOpaque(true);
-        rolePill.setBackground(new Color(220, 252, 231));
-        rolePill.setForeground(new Color(21, 128, 61));
-        rolePill.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
-
-        titleRoleRow.add(nameLbl);
-        titleRoleRow.add(rolePill);
-
-        JLabel metaLbl = new JLabel("Staff ID: " + staff.getStaffId() + "  \u2022  Department: " + staff.getAssignedType() + " Assistance");
+        nameLbl.setFont(nameLbl.getFont().deriveFont(Font.BOLD, 18f));
+        nameLbl.setForeground(Color.WHITE);
+        nameLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel metaLbl = new JLabel("Staff ID: " + staff.getStaffId()
+                + "  \u2022  Department: " + staff.getAssignedType() + " Assistance");
         metaLbl.setFont(metaLbl.getFont().deriveFont(Font.PLAIN, 12f));
-        metaLbl.setForeground(JButtonStyle.TEXT_MUTED);
-
-        nameAndMeta.add(titleRoleRow);
-        nameAndMeta.add(Box.createVerticalStrut(3));
+        metaLbl.setForeground(new Color(180, 200, 230));
+        metaLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        nameAndMeta.add(nameLbl);
+        nameAndMeta.add(Box.createVerticalStrut(4));
         nameAndMeta.add(metaLbl);
-        userInfoPanel.add(nameAndMeta);
-        headerPanel.add(userInfoPanel, BorderLayout.WEST);
+        headerPanel.add(nameAndMeta, BorderLayout.WEST);
 
-        JButton logoutBtn = new JButton("Logout");
-        JButtonStyle.applyDanger(logoutBtn);
+        JButton logoutBtn = createDarkBlueButton("Logout");
         JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
         rightHeader.setOpaque(false);
         rightHeader.add(logoutBtn);
         headerPanel.add(rightHeader, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // MAIN CONTENT CONTAINER
-        JPanel mainContent = new JPanel(new BorderLayout(0, 16));
-        mainContent.setBackground(JButtonStyle.BG_PAGE);
-        mainContent.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
-
-        // STATS ROW
-        JPanel statsRow = new JPanel(new GridLayout(1, 4, 16, 0));
-        statsRow.setOpaque(false);
-        statsRow.setPreferredSize(new Dimension(statsRow.getPreferredSize().width, 82));
-        statsRow.add(JButtonStyle.createStatCard("Assigned Requests", totalAssignedLabel, new Color(59, 130, 246), staff.getAssignedType() + " Department"));
-        statsRow.add(JButtonStyle.createStatCard("Pending Review", pendingCountLabel, new Color(245, 158, 11), "Needs verification"));
-        statsRow.add(JButtonStyle.createStatCard("In Progress", inProgressCountLabel, new Color(99, 102, 241), "Active assistance"));
-        statsRow.add(JButtonStyle.createStatCard("Completed", completedCountLabel, new Color(16, 185, 129), "Fulfilled requests"));
-        mainContent.add(statsRow, BorderLayout.NORTH);
-
-        // TABLE AND TOOLBAR
-        JPanel centerPanel = new JPanel(new BorderLayout(0, 12));
-        centerPanel.setOpaque(false);
-
+        // Toolbar: search only
         JPanel toolbar = new JPanel(new BorderLayout());
-        toolbar.setOpaque(false);
-
-        JPanel actionsLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        actionsLeft.setOpaque(false);
-        JButton updateStatusBtn = new JButton("Update Status");
-        JButton refreshBtn = new JButton("View Details");
-        JButton reloadBtn = new JButton("Refresh");
-        JButtonStyle.applySuccess(updateStatusBtn);
-        JButtonStyle.applyAccent(refreshBtn);
-        JButtonStyle.applySecondary(reloadBtn);
-        actionsLeft.add(updateStatusBtn);
-        actionsLeft.add(refreshBtn);
-        actionsLeft.add(reloadBtn);
-
-        JPanel searchRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        toolbar.setBackground(new Color(245, 247, 250));
+        toolbar.setBorder(BorderFactory.createEmptyBorder(12, 20, 8, 20));
+        JLabel deptLbl = new JLabel(staff.getAssignedType() + " Requests");
+        deptLbl.setFont(deptLbl.getFont().deriveFont(Font.BOLD, 13f));
+        deptLbl.setForeground(DARK_BLUE);
+        JPanel searchRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         searchRight.setOpaque(false);
         JLabel sLbl = new JLabel("Search:");
         sLbl.setFont(sLbl.getFont().deriveFont(Font.BOLD, 12f));
-        sLbl.setForeground(JButtonStyle.TEXT_MUTED);
-        searchField.setPreferredSize(new Dimension(200, 32));
-        searchField.setBorder(JButtonStyle.createFieldBorder());
-        JButton searchBtn = new JButton("Search");
-        JButton clearBtn = new JButton("Clear");
-        JButtonStyle.applyAccent(searchBtn);
-        JButtonStyle.applySecondary(clearBtn);
+        sLbl.setForeground(DARK_BLUE);
+        searchField.setPreferredSize(new Dimension(150, 30));
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 190, 210), 1),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+        JButton searchBtn = createDarkBlueButton("Search");
+        JButton clearBtn = createDarkBlueButton("Clear");
         searchRight.add(sLbl);
         searchRight.add(searchField);
         searchRight.add(searchBtn);
         searchRight.add(clearBtn);
-
-        toolbar.add(actionsLeft, BorderLayout.WEST);
+        toolbar.add(deptLbl, BorderLayout.WEST);
         toolbar.add(searchRight, BorderLayout.EAST);
 
-        JButtonStyle.styleTable(table);
-        table.getColumnModel().getColumn(0).setPreferredWidth(110);
-        table.getColumnModel().getColumn(1).setPreferredWidth(110);
-        table.getColumnModel().getColumn(2).setPreferredWidth(480);
-        table.getColumnModel().getColumn(3).setPreferredWidth(130);
-        table.getColumnModel().getColumn(3).setCellRenderer(new JButtonStyle.StatusBadgeRenderer());
+        // Split
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        splitPane.setDividerLocation(280);
+        splitPane.setDividerSize(4);
+        splitPane.setBorder(null);
+        splitPane.setContinuousLayout(true);
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.getViewport().setBackground(Color.WHITE);
-        scrollPane.setBorder(BorderFactory.createLineBorder(JButtonStyle.BORDER_LIGHT, 1, true));
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.setBackground(Color.WHITE);
+        leftPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(203, 213, 225)));
+        JLabel listTitle = new JLabel("  Assigned Requests");
+        listTitle.setFont(listTitle.getFont().deriveFont(Font.BOLD, 13f));
+        listTitle.setForeground(DARK_BLUE);
+        listTitle.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
+        listTitle.setBackground(new Color(248, 250, 252));
+        listTitle.setOpaque(true);
+        requestList.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        requestList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        requestList.setFixedCellHeight(36);
+        requestList.setBorder(new EmptyBorder(4, 8, 4, 8));
+        requestList.setBackground(Color.WHITE);
+        requestList.setSelectionBackground(new Color(219, 234, 254));
+        requestList.setSelectionForeground(DARK_BLUE);
+        JScrollPane listScroll = new JScrollPane(requestList);
+        listScroll.setBorder(null);
+        leftPanel.add(listTitle, BorderLayout.NORTH);
+        leftPanel.add(listScroll, BorderLayout.CENTER);
 
-        centerPanel.add(toolbar, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
-        mainContent.add(centerPanel, BorderLayout.CENTER);
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(Color.WHITE);
+        JLabel detailsTitle = new JLabel("  Request Details");
+        detailsTitle.setFont(detailsTitle.getFont().deriveFont(Font.BOLD, 13f));
+        detailsTitle.setForeground(DARK_BLUE);
+        detailsTitle.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
+        detailsTitle.setBackground(new Color(248, 250, 252));
+        detailsTitle.setOpaque(true);
+        detailsPanel.setLayout(new BorderLayout());
+        detailsPanel.setBackground(Color.WHITE);
+        detailsPlaceholder.setFont(detailsPlaceholder.getFont().deriveFont(Font.PLAIN, 14f));
+        detailsPlaceholder.setForeground(new Color(148, 163, 184));
+        detailsPanel.add(detailsPlaceholder, BorderLayout.CENTER);
+        JScrollPane detailsScroll = new JScrollPane(detailsPanel);
+        detailsScroll.setBorder(null);
 
+        styleActionButton(updateStatusBtn, false);
+        JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        bottomActions.setBackground(Color.WHITE);
+        bottomActions.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
+        bottomActions.add(updateStatusBtn);
+
+        rightPanel.add(detailsTitle, BorderLayout.NORTH);
+        rightPanel.add(detailsScroll, BorderLayout.CENTER);
+        rightPanel.add(bottomActions, BorderLayout.SOUTH);
+
+        splitPane.setLeftComponent(leftPanel);
+        splitPane.setRightComponent(rightPanel);
+
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setBackground(new Color(245, 247, 250));
+        mainContent.add(toolbar, BorderLayout.NORTH);
+        mainContent.add(splitPane, BorderLayout.CENTER);
         add(mainContent, BorderLayout.CENTER);
 
-        // EVENT LISTENERS
-        refreshBtn.addActionListener(e -> { staff.viewRequests(); showSelectedRequestDetails(); });
-        viewMenuItem.addActionListener(e -> { staff.viewRequests(); showSelectedRequestDetails(); });
-
-        reloadBtn.addActionListener(e -> { staff.viewRequests(); refreshTable(null); });
-        refreshMenuItem.addActionListener(e -> { staff.viewRequests(); refreshTable(null); });
-
-        searchBtn.addActionListener(e -> { staff.searchRequest(); refreshTable(searchField.getText().trim()); });
-        searchField.addActionListener(e -> { staff.searchRequest(); refreshTable(searchField.getText().trim()); });
-        clearBtn.addActionListener(e -> { searchField.setText(""); refreshTable(null); });
+        requestList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                showSelectedDetails();
+                updateActionButtonsState();
+            }
+        });
 
         updateStatusBtn.addActionListener(e -> { staff.updateRequestStatus(); updateStatusDialog(); });
         updateMenuItem.addActionListener(e -> { staff.updateRequestStatus(); updateStatusDialog(); });
-
-        logoutBtn.addActionListener(e -> {
-            staff.logout();
-            dispose();
-            new LoginFrame(fileManager).setVisible(true);
-        });
-        logoutMenuItem.addActionListener(e -> {
-            staff.logout();
-            dispose();
-            new LoginFrame(fileManager).setVisible(true);
-        });
+        refreshMenuItem.addActionListener(e -> { staff.viewRequests(); refreshList(searchField.getText().trim()); });
+        searchBtn.addActionListener(e -> { staff.searchRequest(); refreshList(searchField.getText().trim()); });
+        searchField.addActionListener(e -> { staff.searchRequest(); refreshList(searchField.getText().trim()); });
+        clearBtn.addActionListener(e -> { searchField.setText(""); refreshList(null); });
+        logoutBtn.addActionListener(e -> { staff.logout(); dispose(); new LoginFrame(fileManager).setVisible(true); });
+        logoutMenuItem.addActionListener(e -> { staff.logout(); dispose(); new LoginFrame(fileManager).setVisible(true); });
     }
 
-    private String getInitials(String name) {
-        if (name == null || name.trim().isEmpty()) return "S";
-        String[] parts = name.trim().split("\\s+");
-        if (parts.length == 1) return parts[0].substring(0, Math.min(2, parts[0].length())).toUpperCase();
-        return ("" + parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    private JButton createDarkBlueButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(btn.getFont().deriveFont(Font.BOLD, 12f));
+        btn.setBackground(DARK_BLUE_BTN);
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createEmptyBorder(7, 14, 7, 14));
+        return btn;
     }
 
-    private void refreshTable(String searchTerm) {
-        tableModel.setRowCount(0);
+    private void styleActionButton(JButton btn, boolean enabled) {
+        btn.setFont(btn.getFont().deriveFont(Font.BOLD, 12f));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createEmptyBorder(7, 14, 7, 14));
+        btn.setEnabled(enabled);
+        if (enabled) {
+            btn.setBackground(DARK_BLUE_BTN);
+            btn.setForeground(Color.WHITE);
+        } else {
+            btn.setBackground(GRAY_DISABLED);
+            btn.setForeground(Color.WHITE);
+        }
+    }
+
+    private void updateActionButtonsState() {
+        int idx = requestList.getSelectedIndex();
+        boolean canUpdate = false;
+        if (idx >= 0 && idx < currentRequests.size()) {
+            String st = currentRequests.get(idx).getStatus();
+            // Cannot update cancelled requests
+            canUpdate = st != null && !"Cancelled".equalsIgnoreCase(st);
+        }
+        styleActionButton(updateStatusBtn, canUpdate);
+    }
+
+    private void showSelectedDetails() {
+        int idx = requestList.getSelectedIndex();
+        detailsPanel.removeAll();
+        if (idx < 0 || idx >= currentRequests.size()) {
+            detailsPanel.setLayout(new BorderLayout());
+            detailsPanel.add(detailsPlaceholder, BorderLayout.CENTER);
+            detailsPanel.revalidate();
+            detailsPanel.repaint();
+            return;
+        }
+        AssistanceRequest req = currentRequests.get(idx);
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
+
+        JPanel headerRow = new JPanel(new BorderLayout());
+        headerRow.setOpaque(false);
+        headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        headerRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        JLabel idLbl = new JLabel(req.getRequestId());
+        idLbl.setFont(new Font("SansSerif", Font.BOLD, 16));
+        idLbl.setForeground(DARK_BLUE);
+        JLabel statusBadge = new JLabel("  " + req.getStatus() + "  ");
+        statusBadge.setFont(new Font("SansSerif", Font.BOLD, 11));
+        statusBadge.setOpaque(true);
+        statusBadge.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
+        statusBadge.setBackground(new Color(219, 234, 254));
+        statusBadge.setForeground(DARK_BLUE);
+        headerRow.add(idLbl, BorderLayout.WEST);
+        headerRow.add(statusBadge, BorderLayout.EAST);
+        card.add(headerRow);
+        card.add(Box.createVerticalStrut(18));
+
+        JPanel grid = new JPanel(new GridLayout(2, 2, 32, 14));
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+        grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
+        grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
+        String locationVal = req.getLocation();
+        if (req instanceof TransportationRequest) {
+            TransportationRequest tr = (TransportationRequest) req;
+            locationVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
+        }
+        grid.add(makeFieldBlock(req instanceof TransportationRequest ? "Route" : "Location",
+                locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
+        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+        card.add(grid);
+        card.add(Box.createVerticalStrut(16));
+        card.add(makeDivider());
+        card.add(Box.createVerticalStrut(12));
+
+        if (req instanceof MedicalRequest) {
+            card.add(makeSectionTitle("Requested Items"));
+            card.add(Box.createVerticalStrut(8));
+            for (MedicalItem item : ((MedicalRequest) req).getMedicalItems()) {
+                card.add(makeItemRow(item.getName(), item.getQuantity() + " " + item.getUnit()));
+                card.add(Box.createVerticalStrut(6));
+            }
+        } else if (req instanceof FoodRequest) {
+            card.add(makeSectionTitle("Requested Items"));
+            card.add(Box.createVerticalStrut(8));
+            for (FoodItem item : ((FoodRequest) req).getFoodItems()) {
+                card.add(makeItemRow(item.getName(), item.getQuantity() + " " + item.getUnit()));
+                card.add(Box.createVerticalStrut(6));
+            }
+        } else if (req instanceof TransportationRequest) {
+            TransportationRequest tr = (TransportationRequest) req;
+            card.add(makeSectionTitle("Transport Details"));
+            card.add(Box.createVerticalStrut(8));
+            card.add(makeItemRow("Passengers", String.valueOf(tr.getPassengerCount())));
+        }
+
+        card.add(Box.createVerticalStrut(10));
+        card.add(makeDivider());
+        card.add(Box.createVerticalStrut(12));
+        card.add(makeSectionTitle("Reason for Request"));
+        card.add(Box.createVerticalStrut(6));
+        String reason = req.getAdditionalDetails();
+        JLabel reasonLbl = new JLabel(reason == null || reason.isEmpty() ? "(None)" : reason);
+        reasonLbl.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        reasonLbl.setForeground(new Color(30, 41, 59));
+        reasonLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(reasonLbl);
+
+        detailsPanel.setLayout(new BorderLayout());
+        detailsPanel.add(card, BorderLayout.NORTH);
+        detailsPanel.revalidate();
+        detailsPanel.repaint();
+    }
+
+    private JPanel makeFieldBlock(String label, String value) {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setOpaque(false);
+        JLabel l = new JLabel(label);
+        l.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        l.setForeground(new Color(100, 116, 139));
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel v = new JLabel(value == null || value.isEmpty() ? "-" : value);
+        v.setFont(new Font("SansSerif", Font.BOLD, 14));
+        v.setForeground(new Color(15, 23, 42));
+        v.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(l);
+        p.add(Box.createVerticalStrut(3));
+        p.add(v);
+        return p;
+    }
+
+    private JLabel makeSectionTitle(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        l.setForeground(new Color(100, 116, 139));
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return l;
+    }
+
+    private JPanel makeItemRow(String name, String qty) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        JLabel n = new JLabel(name);
+        n.setFont(new Font("SansSerif", Font.BOLD, 13));
+        n.setForeground(new Color(15, 23, 42));
+        JLabel q = new JLabel(qty);
+        q.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        q.setForeground(new Color(71, 85, 105));
+        row.add(n, BorderLayout.WEST);
+        row.add(q, BorderLayout.EAST);
+        return row;
+    }
+
+    private JSeparator makeDivider() {
+        JSeparator sep = new JSeparator();
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        sep.setForeground(new Color(226, 232, 240));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return sep;
+    }
+
+    private String formatDisplayDate(java.time.LocalDateTime dt) {
+        if (dt == null) return "-";
+        return dt.format(DateTimeFormatter.ofPattern("MMM d, h:mm a"));
+    }
+
+    private void refreshList(String searchTerm) {
+        requestListModel.clear();
+        currentRequests.clear();
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
-        List<AssistanceRequest> all = requestManager.getAllRequests();
-
-        int total = 0;
-        int pending = 0;
-        int inProgress = 0;
-        int completed = 0;
-
-        for (AssistanceRequest r : all) {
+        for (AssistanceRequest r : requestManager.getAllRequests()) {
             if (!r.getType().equalsIgnoreCase(staff.getAssignedType())) continue;
-            total++;
-            String status = r.getStatus();
-            if ("Pending".equalsIgnoreCase(status)) pending++;
-            else if ("Completed".equalsIgnoreCase(status) || "Delivered".equalsIgnoreCase(status) || "Resolved".equalsIgnoreCase(status)) completed++;
-            else inProgress++;
-
             if (!query.isEmpty()
                     && !r.getRequestId().toLowerCase().contains(query)
                     && !r.getResidentId().toLowerCase().contains(query)
-                    && !r.getStatus().toLowerCase().contains(query)) {
-                continue;
-            }
-            tableModel.addRow(new Object[]{r.getRequestId(), r.getResidentId(),
-                    r.toDisplaySummary(), r.getStatus()});
+                    && !r.getStatus().toLowerCase().contains(query)) continue;
+            currentRequests.add(r);
+            requestListModel.addElement(r.getRequestId() + "  (" + r.getStatus() + ")");
         }
-
-        totalAssignedLabel.setText(String.valueOf(total));
-        pendingCountLabel.setText(String.valueOf(pending));
-        inProgressCountLabel.setText(String.valueOf(inProgress));
-        completedCountLabel.setText(String.valueOf(completed));
+        detailsPanel.removeAll();
+        detailsPanel.setLayout(new BorderLayout());
+        detailsPanel.add(detailsPlaceholder, BorderLayout.CENTER);
+        detailsPanel.revalidate();
+        detailsPanel.repaint();
+        updateActionButtonsState();
     }
 
     private AssistanceRequest getSelectedRequest() {
-        int row = table.getSelectedRow();
-        if (row < 0) {
+        int idx = requestList.getSelectedIndex();
+        if (idx < 0 || idx >= currentRequests.size()) {
             JOptionPane.showMessageDialog(this, "Please select a request first.",
                     "No Selection", JOptionPane.WARNING_MESSAGE);
             return null;
         }
-        String id = (String) tableModel.getValueAt(row, 0);
-        return requestManager.findRequest(id);
-    }
-
-    private void showSelectedRequestDetails() {
-        AssistanceRequest req = getSelectedRequest();
-        if (req == null) return;
-
-        JPanel detailsPanel = new JPanel(new GridLayout(0, 2, 8, 6));
-        addDetailRow(detailsPanel, "Request ID", req.getRequestId());
-        addDetailRow(detailsPanel, "Resident ID", req.getResidentId());
-        addDetailRow(detailsPanel, "Type", req.getType());
-        addDetailRow(detailsPanel, "Time needed", req.getTimeNeeded().format(AssistanceRequest.DT_FMT));
-        addDetailRow(detailsPanel, "Additional details", req.getAdditionalDetails());
-        addDetailRow(detailsPanel, "Status", req.getStatus());
-        addDetailRow(detailsPanel, "Submitted", req.getDateRequested().format(AssistanceRequest.DT_FMT));
-
-        if (req instanceof MedicalRequest) {
-            MedicalRequest medical = (MedicalRequest) req;
-            addDetailRow(detailsPanel, "Location", req.getLocation());
-            int itemNumber = 1;
-            for (MedicalItem item : medical.getMedicalItems()) {
-                addDetailRow(detailsPanel, "Medical item " + itemNumber++, item.toString());
-            }
-        } else if (req instanceof FoodRequest) {
-            FoodRequest food = (FoodRequest) req;
-            addDetailRow(detailsPanel, "Location", req.getLocation());
-            int itemNumber = 1;
-            for (FoodItem item : food.getFoodItems()) {
-                addDetailRow(detailsPanel, "Food item " + itemNumber++, item.toString());
-            }
-        } else if (req instanceof TransportationRequest) {
-            TransportationRequest transportation = (TransportationRequest) req;
-            addDetailRow(detailsPanel, "Pickup location", transportation.getPickupLocation());
-            addDetailRow(detailsPanel, "Destination", transportation.getDestination());
-            addDetailRow(detailsPanel, "Passengers", String.valueOf(transportation.getPassengerCount()));
-        }
-
-        JScrollPane scrollPane = new JScrollPane(detailsPanel);
-        scrollPane.setPreferredSize(new Dimension(520, 320));
-        Object[] options = {"Change Status", "Close"};
-        int choice = showRequestDialog(scrollPane, "Request Details", options);
-        if (choice == 0) updateStatusDialog(req);
-    }
-
-    private void addDetailRow(JPanel panel, String label, String value) {
-        panel.add(new JLabel(label + ":"));
-        JTextArea valueArea = new JTextArea(value == null ? "" : value);
-        valueArea.setEditable(false);
-        valueArea.setLineWrap(true);
-        valueArea.setWrapStyleWord(true);
-        valueArea.setRows(Math.max(1, Math.min(4, (valueArea.getText().length() / 45) + 1)));
-        valueArea.setBackground(panel.getBackground());
-        valueArea.setBorder(BorderFactory.createEmptyBorder());
-        panel.add(valueArea);
+        return currentRequests.get(idx);
     }
 
     private void updateStatusDialog() {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
-        updateStatusDialog(req);
-    }
+        if ("Cancelled".equalsIgnoreCase(req.getStatus())) {
+            JOptionPane.showMessageDialog(this, "Cancelled requests cannot be updated.",
+                    "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-    private void updateStatusDialog(AssistanceRequest req) {
         String[] statuses = {"Pending", "In Progress", "Help is OTW", "Completed", "Cancelled"};
         JComboBox<String> statusBox = new JComboBox<>(statuses);
-
         String currentStatus = req.getStatus() == null ? "Pending" : req.getStatus().trim();
         for (int i = 0; i < statuses.length; i++) {
             if (statuses[i].equalsIgnoreCase(currentStatus)) {
@@ -357,44 +432,55 @@ public class StaffMenuFrame extends JFrame {
             }
         }
 
-        JPanel panel = new JPanel(new GridLayout(0, 2, 6, 6));
-        panel.add(new JLabel("Request ID:"));
+        JPanel panel = new JPanel(new GridLayout(0, 2, 12, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        panel.setBackground(Color.WHITE);
+        JLabel idL = new JLabel("Request ID");
+        idL.setForeground(DARK_BLUE);
+        idL.setFont(idL.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(idL);
         panel.add(new JLabel(req.getRequestId()));
-        panel.add(new JLabel("Resident ID:"));
+        JLabel resL = new JLabel("Resident ID");
+        resL.setForeground(DARK_BLUE);
+        resL.setFont(resL.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(resL);
         panel.add(new JLabel(req.getResidentId()));
-        panel.add(new JLabel("Current status:"));
+        JLabel curL = new JLabel("Current Status");
+        curL.setForeground(DARK_BLUE);
+        curL.setFont(curL.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(curL);
         panel.add(new JLabel(currentStatus));
-        panel.add(new JLabel("New status:"));
+        JLabel newL = new JLabel("New Status");
+        newL.setForeground(DARK_BLUE);
+        newL.setFont(newL.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(newL);
         panel.add(statusBox);
 
-        Object[] options = {"Save Status", "Close"};
-        int choice = showRequestDialog(panel, "Update Request", options);
-        if (choice != 0) return;
+        JDialog dialog = new JDialog(this, "Update Request Status", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(panel, BorderLayout.CENTER);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+        buttons.setBackground(Color.WHITE);
+        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
+        JButton saveBtn = createDarkBlueButton("Save Status");
+        JButton closeBtn = createDarkBlueButton("Close");
+        buttons.add(saveBtn);
+        buttons.add(closeBtn);
+        dialog.add(buttons, BorderLayout.SOUTH);
 
-        String newStatus = (String) statusBox.getSelectedItem();
-        req.updateStatus(newStatus);
-        fileManager.recordStaffRequestAction(staff, req, newStatus);
-        requestManager.updateRequest(req);
-        refreshTable(searchField.getText().trim());
-        JOptionPane.showMessageDialog(this, "Status updated to " + newStatus + ".");
-    }
-
-    private int showRequestDialog(Component content, String title, Object[] options) {
-        JOptionPane optionPane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE,
-                JOptionPane.DEFAULT_OPTION, null, options, options[0]);
-        JDialog dialog = optionPane.createDialog(this, title);
-        dialog.setResizable(true);
-        dialog.setSize(REQUEST_DIALOG_SIZE);
-        dialog.setMinimumSize(REQUEST_DIALOG_SIZE);
+        saveBtn.addActionListener(e -> {
+            String newStatus = (String) statusBox.getSelectedItem();
+            req.updateStatus(newStatus);
+            fileManager.recordStaffRequestAction(staff, req, newStatus);
+            requestManager.updateRequest(req);
+            refreshList(searchField.getText().trim());
+            JOptionPane.showMessageDialog(dialog, "Status updated to " + newStatus + ".");
+            dialog.dispose();
+        });
+        closeBtn.addActionListener(e -> dialog.dispose());
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(420, 280));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
-
-        Object selectedOption = optionPane.getValue();
-        dialog.dispose();
-        for (int i = 0; i < options.length; i++) {
-            if (options[i].equals(selectedOption)) return i;
-        }
-        return -1;
     }
-
 }

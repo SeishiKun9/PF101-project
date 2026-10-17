@@ -12,13 +12,25 @@ import java.util.function.Function;
  * Data is stored as pipe-delimited text files under the "data" folder.
  */
 public class FileManager {
-    private static String resolveDataDir() {
-        if (Files.isDirectory(Paths.get("data"))) {
-            return "data";
-        }
-        if (Files.isDirectory(Paths.get("PF101-project", "data"))) {
-            return "PF101-project" + File.separator + "data";
-        }
+    /**
+     * Resolves the single persistent data folder at the project root.
+     * Works no matter where the JVM is launched from (project root, src/,
+     * bin/) and never points at src/data (the Java package directory).
+     */
+    public static String resolveDataDir() {
+        // 1) Walk up from the working directory looking for a folder that
+        // contains BOTH data/ and src/ — that is the project root.
+        try {
+            java.nio.file.Path dir = Paths.get("").toAbsolutePath().normalize();
+            while (dir != null) {
+                if (Files.isDirectory(dir.resolve("data"))
+                        && Files.isDirectory(dir.resolve("src"))) {
+                    return dir.resolve("data").toString();
+                }
+                dir = dir.getParent();
+            }
+        } catch (Exception ignored) { }
+        // 2) Fallback: relative "data" (correct when run from project root).
         return "data";
     }
 

@@ -33,13 +33,11 @@ PF101-project/
 │   ├── data/                  # Data persistence and managers
 │   │   ├── FileManager.java
 │   │   └── RequestManager.java
-│   └── ui/                    # Graphical user interface frames & styling
-│       ├── JButtonStyle.java
-│       ├── LoginFrame.java
-│       ├── RegisterFrame.java
+│   └── ui/                    # Graphical user interface frames
+│       ├── LoginFrame.java         # Login (admin creates all accounts)
 │       ├── ResidentMenuFrame.java
 │       ├── StaffMenuFrame.java
-│       └── AdminMenuFrame.java
+│       └── AdminMenuFrame.java     # Includes Create User dialog
 └── README.md
 ```
 

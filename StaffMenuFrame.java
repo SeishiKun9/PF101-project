@@ -18,10 +18,16 @@ public class StaffMenuFrame extends JFrame {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
     private final JTable table = new JTable(tableModel);
-    private final JTextField searchField = new JTextField(14);
+    private final JTextField searchField = new JTextField(16);
+
+    // KPI Stat Labels
+    private final JLabel totalAssignedLabel = new JLabel("0");
+    private final JLabel pendingCountLabel = new JLabel("0");
+    private final JLabel inProgressCountLabel = new JLabel("0");
+    private final JLabel completedCountLabel = new JLabel("0");
 
     public StaffMenuFrame(Staff staff) {
-        super(staff.getRole() + " Menu - " + staff.getFullName() + " (" + staff.getAssignedType() + ")");
+        super("Staff Menu - " + staff.getFullName() + " (" + staff.getAssignedType() + ")");
         this.staff = staff;
         buildUI();
         refreshTable(null);
@@ -29,84 +35,224 @@ public class StaffMenuFrame extends JFrame {
 
     private void buildUI() {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(900, 600);
-        setMinimumSize(new Dimension(800, 520));
+        setSize(1000, 660);
+        setMinimumSize(new Dimension(860, 560));
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout(8, 8));
-        getContentPane().setBackground(new Color(240, 243, 247));
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(JButtonStyle.BG_PAGE);
 
-        JLabel header = new JLabel("Welcome, " + staff.getFullName() + "  (Staff ID: " + staff.getStaffId()
-                + ", assigned: " + staff.getAssignedType() + ")");
-        header.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
-        header.setForeground(new Color(27, 42, 67));
-        header.setFont(header.getFont().deriveFont(Font.BOLD, 14f));
+        // NATIVE MENU BAR (Staff Menu)
+        JMenuBar menuBar = new JMenuBar();
+        menuBar.setBackground(Color.WHITE);
+        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JButtonStyle.BORDER_LIGHT));
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        top.setBackground(new Color(245, 247, 250));
-        top.add(new JLabel("Search (Request ID / Resident ID / Status):"));
-        searchField.setPreferredSize(new Dimension(220, 28));
-        top.add(searchField);
+        JMenu staffMenu = new JMenu("Staff Menu");
+        staffMenu.setFont(staffMenu.getFont().deriveFont(Font.BOLD, 12f));
+
+        JMenuItem updateMenuItem = new JMenuItem("Update Request Status");
+        JMenuItem viewMenuItem = new JMenuItem("View Request Details");
+        JMenuItem refreshMenuItem = new JMenuItem("Refresh Requests");
+        JMenuItem logoutMenuItem = new JMenuItem("Logout");
+
+        staffMenu.add(updateMenuItem);
+        staffMenu.add(viewMenuItem);
+        staffMenu.addSeparator();
+        staffMenu.add(refreshMenuItem);
+        staffMenu.add(logoutMenuItem);
+        menuBar.add(staffMenu);
+        setJMenuBar(menuBar);
+
+        // TOP HEADER
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, JButtonStyle.BORDER_LIGHT),
+                BorderFactory.createEmptyBorder(16, 24, 16, 24)));
+
+        JPanel userInfoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
+        userInfoPanel.setOpaque(false);
+
+        JPanel avatar = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(236, 253, 245));
+                g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
+                g2.setColor(new Color(167, 243, 208));
+                g2.drawOval(0, 0, getWidth() - 1, getHeight() - 1);
+                g2.setColor(new Color(5, 150, 105));
+                g2.setFont(new Font("SansSerif", Font.BOLD, 15));
+                FontMetrics fm = g2.getFontMetrics();
+                String in = getInitials(staff.getFullName());
+                g2.drawString(in, (getWidth() - fm.stringWidth(in)) / 2, (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
+                g2.dispose();
+            }
+        };
+        avatar.setPreferredSize(new Dimension(44, 44));
+        avatar.setOpaque(false);
+        userInfoPanel.add(avatar);
+
+        JPanel nameAndMeta = new JPanel();
+        nameAndMeta.setLayout(new BoxLayout(nameAndMeta, BoxLayout.Y_AXIS));
+        nameAndMeta.setOpaque(false);
+
+        JPanel titleRoleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        titleRoleRow.setOpaque(false);
+        JLabel nameLbl = new JLabel(staff.getFullName());
+        nameLbl.setFont(nameLbl.getFont().deriveFont(Font.BOLD, 17f));
+        nameLbl.setForeground(JButtonStyle.TEXT_DARK);
+
+        JLabel rolePill = new JLabel(" " + staff.getAssignedType().toUpperCase() + " STAFF ");
+        rolePill.setFont(rolePill.getFont().deriveFont(Font.BOLD, 10.5f));
+        rolePill.setOpaque(true);
+        rolePill.setBackground(new Color(220, 252, 231));
+        rolePill.setForeground(new Color(21, 128, 61));
+        rolePill.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+
+        titleRoleRow.add(nameLbl);
+        titleRoleRow.add(rolePill);
+
+        JLabel metaLbl = new JLabel("Staff ID: " + staff.getStaffId() + "  \u2022  Department: " + staff.getAssignedType() + " Assistance");
+        metaLbl.setFont(metaLbl.getFont().deriveFont(Font.PLAIN, 12f));
+        metaLbl.setForeground(JButtonStyle.TEXT_MUTED);
+
+        nameAndMeta.add(titleRoleRow);
+        nameAndMeta.add(Box.createVerticalStrut(3));
+        nameAndMeta.add(metaLbl);
+        userInfoPanel.add(nameAndMeta);
+        headerPanel.add(userInfoPanel, BorderLayout.WEST);
+
+        JButton logoutBtn = new JButton("Logout");
+        JButtonStyle.applyDanger(logoutBtn);
+        JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
+        rightHeader.setOpaque(false);
+        rightHeader.add(logoutBtn);
+        headerPanel.add(rightHeader, BorderLayout.EAST);
+        add(headerPanel, BorderLayout.NORTH);
+
+        // MAIN CONTENT CONTAINER
+        JPanel mainContent = new JPanel(new BorderLayout(0, 16));
+        mainContent.setBackground(JButtonStyle.BG_PAGE);
+        mainContent.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+
+        // STATS ROW
+        JPanel statsRow = new JPanel(new GridLayout(1, 4, 16, 0));
+        statsRow.setOpaque(false);
+        statsRow.setPreferredSize(new Dimension(statsRow.getPreferredSize().width, 82));
+        statsRow.add(JButtonStyle.createStatCard("Assigned Requests", totalAssignedLabel, new Color(59, 130, 246), staff.getAssignedType() + " Department"));
+        statsRow.add(JButtonStyle.createStatCard("Pending Review", pendingCountLabel, new Color(245, 158, 11), "Needs verification"));
+        statsRow.add(JButtonStyle.createStatCard("In Progress", inProgressCountLabel, new Color(99, 102, 241), "Active assistance"));
+        statsRow.add(JButtonStyle.createStatCard("Completed", completedCountLabel, new Color(16, 185, 129), "Fulfilled requests"));
+        mainContent.add(statsRow, BorderLayout.NORTH);
+
+        // TABLE AND TOOLBAR
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 12));
+        centerPanel.setOpaque(false);
+
+        JPanel toolbar = new JPanel(new BorderLayout());
+        toolbar.setOpaque(false);
+
+        JPanel actionsLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        actionsLeft.setOpaque(false);
+        JButton updateStatusBtn = new JButton("Update Status");
+        JButton refreshBtn = new JButton("View Details");
+        JButton reloadBtn = new JButton("Refresh");
+        JButtonStyle.applyAccent(updateStatusBtn);
+        JButtonStyle.applySecondary(refreshBtn);
+        JButtonStyle.applySecondary(reloadBtn);
+        actionsLeft.add(updateStatusBtn);
+        actionsLeft.add(refreshBtn);
+        actionsLeft.add(reloadBtn);
+
+        JPanel searchRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        searchRight.setOpaque(false);
+        JLabel sLbl = new JLabel("Search:");
+        sLbl.setFont(sLbl.getFont().deriveFont(Font.BOLD, 12f));
+        sLbl.setForeground(JButtonStyle.TEXT_MUTED);
+        searchField.setPreferredSize(new Dimension(200, 32));
+        searchField.setBorder(JButtonStyle.createFieldBorder());
         JButton searchBtn = new JButton("Search");
         JButton clearBtn = new JButton("Clear");
         JButtonStyle.applySecondary(searchBtn);
         JButtonStyle.applySecondary(clearBtn);
-        top.add(searchBtn);
-        top.add(clearBtn);
+        searchRight.add(sLbl);
+        searchRight.add(searchField);
+        searchRight.add(searchBtn);
+        searchRight.add(clearBtn);
 
-        JPanel heading = new JPanel(new BorderLayout());
-        heading.setBackground(new Color(245, 247, 250));
-        heading.add(header, BorderLayout.NORTH);
-        heading.add(top, BorderLayout.SOUTH);
-        add(heading, BorderLayout.NORTH);
+        toolbar.add(actionsLeft, BorderLayout.WEST);
+        toolbar.add(searchRight, BorderLayout.EAST);
 
-        table.setRowHeight(28);
-        table.setGridColor(new Color(220, 225, 232));
-        table.setSelectionBackground(new Color(206, 225, 255));
-        table.setSelectionForeground(Color.BLACK);
-        table.setForeground(Color.BLACK);
-        table.getTableHeader().setBackground(new Color(45, 98, 219));
-        table.getTableHeader().setForeground(Color.BLACK);
-        table.getTableHeader().setFont(table.getTableHeader().getFont().deriveFont(Font.BOLD, 12f));
-        table.getTableHeader().setReorderingAllowed(false);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JButtonStyle.styleTable(table);
+        table.getColumnModel().getColumn(0).setPreferredWidth(110);
+        table.getColumnModel().getColumn(1).setPreferredWidth(110);
+        table.getColumnModel().getColumn(2).setPreferredWidth(480);
+        table.getColumnModel().getColumn(3).setPreferredWidth(130);
+        table.getColumnModel().getColumn(3).setCellRenderer(new JButtonStyle.StatusBadgeRenderer());
 
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        bottom.setBackground(new Color(240, 243, 247));
-        JPanel logoutPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        logoutPanel.setBackground(new Color(240, 243, 247));
-        JButton refreshBtn = new JButton("View Request");
-        JButton updateStatusBtn = new JButton("Update Status");
-        JButton logoutBtn = new JButton("Logout");
-        JButtonStyle.applySecondary(refreshBtn);
-        JButtonStyle.applyAccent(updateStatusBtn);
-        JButtonStyle.applySecondary(logoutBtn);
-        bottom.add(refreshBtn);
-        bottom.add(updateStatusBtn);
-        logoutPanel.add(logoutBtn);
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.getViewport().setBackground(Color.WHITE);
+        scrollPane.setBorder(BorderFactory.createLineBorder(JButtonStyle.BORDER_LIGHT, 1, true));
 
-        JPanel south = new JPanel(new BorderLayout());
-        south.setBackground(new Color(240, 243, 247));
-        south.add(bottom, BorderLayout.NORTH);
-        south.add(logoutPanel, BorderLayout.SOUTH);
-        add(south, BorderLayout.SOUTH);
+        centerPanel.add(toolbar, BorderLayout.NORTH);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        mainContent.add(centerPanel, BorderLayout.CENTER);
 
+        add(mainContent, BorderLayout.CENTER);
+
+        // EVENT LISTENERS
         refreshBtn.addActionListener(e -> { staff.viewRequests(); showSelectedRequestDetails(); });
+        viewMenuItem.addActionListener(e -> { staff.viewRequests(); showSelectedRequestDetails(); });
+
+        reloadBtn.addActionListener(e -> { staff.viewRequests(); refreshTable(null); });
+        refreshMenuItem.addActionListener(e -> { staff.viewRequests(); refreshTable(null); });
+
         searchBtn.addActionListener(e -> { staff.searchRequest(); refreshTable(searchField.getText().trim()); });
+        searchField.addActionListener(e -> { staff.searchRequest(); refreshTable(searchField.getText().trim()); });
         clearBtn.addActionListener(e -> { searchField.setText(""); refreshTable(null); });
+
         updateStatusBtn.addActionListener(e -> { staff.updateRequestStatus(); updateStatusDialog(); });
+        updateMenuItem.addActionListener(e -> { staff.updateRequestStatus(); updateStatusDialog(); });
+
         logoutBtn.addActionListener(e -> {
+            staff.logout();
+            dispose();
+            new LoginFrame(fileManager).setVisible(true);
+        });
+        logoutMenuItem.addActionListener(e -> {
             staff.logout();
             dispose();
             new LoginFrame(fileManager).setVisible(true);
         });
     }
 
+    private String getInitials(String name) {
+        if (name == null || name.trim().isEmpty()) return "S";
+        String[] parts = name.trim().split("\\s+");
+        if (parts.length == 1) return parts[0].substring(0, Math.min(2, parts[0].length())).toUpperCase();
+        return ("" + parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+
     private void refreshTable(String searchTerm) {
         tableModel.setRowCount(0);
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
         List<AssistanceRequest> all = requestManager.getAllRequests();
+
+        int total = 0;
+        int pending = 0;
+        int inProgress = 0;
+        int completed = 0;
+
         for (AssistanceRequest r : all) {
             if (!r.getType().equalsIgnoreCase(staff.getAssignedType())) continue;
+            total++;
+            String status = r.getStatus();
+            if ("Pending".equalsIgnoreCase(status)) pending++;
+            else if ("Completed".equalsIgnoreCase(status) || "Delivered".equalsIgnoreCase(status) || "Resolved".equalsIgnoreCase(status)) completed++;
+            else inProgress++;
+
             if (!query.isEmpty()
                     && !r.getRequestId().toLowerCase().contains(query)
                     && !r.getResidentId().toLowerCase().contains(query)
@@ -116,6 +262,11 @@ public class StaffMenuFrame extends JFrame {
             tableModel.addRow(new Object[]{r.getRequestId(), r.getResidentId(),
                     r.toDisplaySummary(), r.getStatus()});
         }
+
+        totalAssignedLabel.setText(String.valueOf(total));
+        pendingCountLabel.setText(String.valueOf(pending));
+        inProgressCountLabel.setText(String.valueOf(inProgress));
+        completedCountLabel.setText(String.valueOf(completed));
     }
 
     private AssistanceRequest getSelectedRequest() {

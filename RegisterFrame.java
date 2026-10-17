@@ -24,33 +24,64 @@ public class RegisterFrame extends JFrame {
 
     private void buildUI() {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(360, 300);
+        setSize(440, 480);
         setLocationRelativeTo(null);
+        setResizable(false);
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(Color.WHITE);
 
-        JPanel panel = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(6, 6, 6, 6);
-        c.fill = GridBagConstraints.HORIZONTAL;
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setBackground(Color.WHITE);
+        header.setBorder(BorderFactory.createEmptyBorder(24, 28, 12, 28));
 
-        int row = 0;
-        c.gridy = row++; c.gridx = 0; panel.add(new JLabel("Full Name:"), c);
-        c.gridx = 1; panel.add(nameField, c);
+        JLabel title = new JLabel("Create Resident Account");
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
+        title.setForeground(JButtonStyle.TEXT_DARK);
 
-        c.gridy = row++; c.gridx = 0; panel.add(new JLabel("Password:"), c);
-        c.gridx = 1; panel.add(passwordField, c);
+        JLabel sub = new JLabel("Fill out the details below to register for barangay services.");
+        sub.setFont(sub.getFont().deriveFont(Font.PLAIN, 12f));
+        sub.setForeground(JButtonStyle.TEXT_MUTED);
 
-        c.gridy = row++; c.gridx = 0; panel.add(new JLabel("Address:"), c);
-        c.gridx = 1; panel.add(addressField, c);
+        header.add(title);
+        header.add(Box.createVerticalStrut(4));
+        header.add(sub);
+        add(header, BorderLayout.NORTH);
 
-        c.gridy = row++; c.gridx = 0; panel.add(new JLabel("Contact No:"), c);
-        c.gridx = 1; panel.add(contactField, c);
+        JPanel form = new JPanel(new GridLayout(0, 1, 0, 6));
+        form.setBackground(Color.WHITE);
+        form.setBorder(BorderFactory.createEmptyBorder(8, 28, 16, 28));
 
-        JButton submit = new JButton("Create Account");
+        nameField.setPreferredSize(new Dimension(380, 34));
+        nameField.setBorder(JButtonStyle.createFieldBorder());
+        passwordField.setPreferredSize(new Dimension(380, 34));
+        passwordField.setBorder(JButtonStyle.createFieldBorder());
+        addressField.setPreferredSize(new Dimension(380, 34));
+        addressField.setBorder(JButtonStyle.createFieldBorder());
+        contactField.setPreferredSize(new Dimension(380, 34));
+        contactField.setBorder(JButtonStyle.createFieldBorder());
+
+        form.add(createFieldLabel("Full Name"));
+        form.add(nameField);
+        form.add(createFieldLabel("Password"));
+        form.add(passwordField);
+        form.add(createFieldLabel("Residential Address"));
+        form.add(addressField);
+        form.add(createFieldLabel("Contact Number"));
+        form.add(contactField);
+        add(form, BorderLayout.CENTER);
+
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 16));
+        bottom.setBackground(Color.WHITE);
+        bottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, JButtonStyle.BORDER_LIGHT));
+
         JButton back = new JButton("Back to Login");
-        c.gridy = row++; c.gridx = 0; panel.add(back, c);
-        c.gridx = 1; panel.add(submit, c);
-
-        add(panel);
+        JButton submit = new JButton("Create Account");
+        JButtonStyle.applySecondary(back);
+        JButtonStyle.applyAccent(submit);
+        bottom.add(back);
+        bottom.add(submit);
+        add(bottom, BorderLayout.SOUTH);
 
         submit.addActionListener(e -> register());
         back.addActionListener(e -> {
@@ -62,6 +93,13 @@ public class RegisterFrame extends JFrame {
                 loginFrame.setVisible(true);
             }
         });
+    }
+
+    private JLabel createFieldLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 12f));
+        lbl.setForeground(new Color(51, 65, 85));
+        return lbl;
     }
 
     private void register() {

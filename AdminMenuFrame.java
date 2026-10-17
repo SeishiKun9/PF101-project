@@ -17,14 +17,20 @@ public class AdminMenuFrame extends JFrame {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
     private final JTable userTable = new JTable(userTableModel);
-    private final JTextField userSearchField = new JTextField(14);
+    private final JTextField userSearchField = new JTextField(16);
 
     private final DefaultTableModel requestTableModel =
             new DefaultTableModel(new Object[]{"Request ID", "Resident ID", "Type", "Status"}, 0) {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
     private final JTable requestTable = new JTable(requestTableModel);
-    private final JTextField requestSearchField = new JTextField(14);
+    private final JTextField requestSearchField = new JTextField(16);
+
+    // KPI Stat Labels
+    private final JLabel userCountLabel = new JLabel("0");
+    private final JLabel residentCountLabel = new JLabel("0");
+    private final JLabel staffCountLabel = new JLabel("0");
+    private final JLabel requestCountLabel = new JLabel("0");
 
     public AdminMenuFrame(Admin admin) {
         super("Admin Menu - " + admin.getFullName());
@@ -36,121 +42,277 @@ public class AdminMenuFrame extends JFrame {
 
     private void buildUI() {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(820, 520);
+        setSize(1040, 680);
+        setMinimumSize(new Dimension(900, 600));
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout(8, 8));
-        getContentPane().setBackground(new Color(240, 243, 247));
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(JButtonStyle.BG_PAGE);
 
-        JLabel header = new JLabel("Welcome, " + admin.getFullName() + "  (Admin ID: " + admin.getAdminId() + ")");
-        header.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
-        header.setForeground(new Color(27, 42, 67));
-        header.setFont(header.getFont().deriveFont(Font.BOLD, 14f));
-        add(header, BorderLayout.NORTH);
+        // NATIVE MENU BAR (Admin Menu)
+        JMenuBar menuBar = new JMenuBar();
+        menuBar.setBackground(Color.WHITE);
+        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JButtonStyle.BORDER_LIGHT));
 
+        JMenu adminMenu = new JMenu("Admin Menu");
+        adminMenu.setFont(adminMenu.getFont().deriveFont(Font.BOLD, 12f));
+
+        JMenuItem createMenuItem = new JMenuItem("+ Create User");
+        JMenuItem editMenuItem = new JMenuItem("Manage Selected User");
+        JMenuItem historyMenuItem = new JMenuItem("View User History");
+        JMenuItem viewReqMenuItem = new JMenuItem("View Request Details");
+        JMenuItem refreshReqMenuItem = new JMenuItem("Refresh All Requests");
+        JMenuItem deleteReqMenuItem = new JMenuItem("Delete Selected Request");
+        JMenuItem logoutMenuItem = new JMenuItem("Logout");
+
+        adminMenu.add(createMenuItem);
+        adminMenu.add(editMenuItem);
+        adminMenu.add(historyMenuItem);
+        adminMenu.addSeparator();
+        adminMenu.add(viewReqMenuItem);
+        adminMenu.add(refreshReqMenuItem);
+        adminMenu.add(deleteReqMenuItem);
+        adminMenu.addSeparator();
+        adminMenu.add(logoutMenuItem);
+        menuBar.add(adminMenu);
+        setJMenuBar(menuBar);
+
+        // TOP HEADER
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, JButtonStyle.BORDER_LIGHT),
+                BorderFactory.createEmptyBorder(16, 24, 16, 24)));
+
+        JPanel userInfoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
+        userInfoPanel.setOpaque(false);
+
+        JPanel avatar = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(243, 232, 255));
+                g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
+                g2.setColor(new Color(216, 180, 254));
+                g2.drawOval(0, 0, getWidth() - 1, getHeight() - 1);
+                g2.setColor(new Color(126, 34, 206));
+                g2.setFont(new Font("SansSerif", Font.BOLD, 15));
+                FontMetrics fm = g2.getFontMetrics();
+                String in = "AD";
+                g2.drawString(in, (getWidth() - fm.stringWidth(in)) / 2, (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
+                g2.dispose();
+            }
+        };
+        avatar.setPreferredSize(new Dimension(44, 44));
+        avatar.setOpaque(false);
+        userInfoPanel.add(avatar);
+
+        JPanel nameAndMeta = new JPanel();
+        nameAndMeta.setLayout(new BoxLayout(nameAndMeta, BoxLayout.Y_AXIS));
+        nameAndMeta.setOpaque(false);
+
+        JPanel titleRoleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        titleRoleRow.setOpaque(false);
+        JLabel nameLbl = new JLabel(admin.getFullName());
+        nameLbl.setFont(nameLbl.getFont().deriveFont(Font.BOLD, 17f));
+        nameLbl.setForeground(JButtonStyle.TEXT_DARK);
+
+        JLabel rolePill = new JLabel(" SYSTEM ADMIN ");
+        rolePill.setFont(rolePill.getFont().deriveFont(Font.BOLD, 10.5f));
+        rolePill.setOpaque(true);
+        rolePill.setBackground(new Color(243, 232, 255));
+        rolePill.setForeground(new Color(126, 34, 206));
+        rolePill.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+
+        titleRoleRow.add(nameLbl);
+        titleRoleRow.add(rolePill);
+
+        JLabel metaLbl = new JLabel("Admin ID: " + admin.getAdminId() + "  \u2022  Full System Access");
+        metaLbl.setFont(metaLbl.getFont().deriveFont(Font.PLAIN, 12f));
+        metaLbl.setForeground(JButtonStyle.TEXT_MUTED);
+
+        nameAndMeta.add(titleRoleRow);
+        nameAndMeta.add(Box.createVerticalStrut(3));
+        nameAndMeta.add(metaLbl);
+        userInfoPanel.add(nameAndMeta);
+        headerPanel.add(userInfoPanel, BorderLayout.WEST);
+
+        JButton logoutBtn = new JButton("Logout");
+        JButtonStyle.applyDanger(logoutBtn);
+        JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
+        rightHeader.setOpaque(false);
+        rightHeader.add(logoutBtn);
+        headerPanel.add(rightHeader, BorderLayout.EAST);
+        add(headerPanel, BorderLayout.NORTH);
+
+        // MAIN CONTENT CONTAINER
+        JPanel mainContent = new JPanel(new BorderLayout(0, 16));
+        mainContent.setBackground(JButtonStyle.BG_PAGE);
+        mainContent.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+
+        // STATS ROW
+        JPanel statsRow = new JPanel(new GridLayout(1, 4, 16, 0));
+        statsRow.setOpaque(false);
+        statsRow.setPreferredSize(new Dimension(statsRow.getPreferredSize().width, 82));
+        statsRow.add(JButtonStyle.createStatCard("Total Users", userCountLabel, new Color(59, 130, 246), "Registered accounts"));
+        statsRow.add(JButtonStyle.createStatCard("Residents", residentCountLabel, new Color(16, 185, 129), "Community members"));
+        statsRow.add(JButtonStyle.createStatCard("Staff Members", staffCountLabel, new Color(99, 102, 241), "Assigned personnel"));
+        statsRow.add(JButtonStyle.createStatCard("Total Requests", requestCountLabel, new Color(245, 158, 11), "All system requests"));
+        mainContent.add(statsRow, BorderLayout.NORTH);
+
+        // TABBED PANE
         JTabbedPane tabs = new JTabbedPane();
-        tabs.setBackground(new Color(245, 247, 250));
+        tabs.setFont(tabs.getFont().deriveFont(Font.BOLD, 12.5f));
+        tabs.setBackground(Color.WHITE);
 
-        userTable.setRowHeight(28);
-        userTable.setGridColor(new Color(220, 225, 232));
-        userTable.setSelectionBackground(new Color(206, 225, 255));
-        userTable.setForeground(Color.BLACK);
-        userTable.getTableHeader().setBackground(new Color(45, 98, 219));
-        userTable.getTableHeader().setForeground(Color.BLACK);
-        userTable.getTableHeader().setFont(userTable.getTableHeader().getFont().deriveFont(Font.BOLD, 12f));
+        // Style tables
+        JButtonStyle.styleTable(userTable);
+        JButtonStyle.styleTable(requestTable);
+        requestTable.getColumnModel().getColumn(3).setCellRenderer(new JButtonStyle.StatusBadgeRenderer());
 
-        requestTable.setRowHeight(28);
-        requestTable.setGridColor(new Color(220, 225, 232));
-        requestTable.setSelectionBackground(new Color(206, 225, 255));
-        requestTable.setForeground(Color.BLACK);
-        requestTable.getTableHeader().setBackground(new Color(45, 98, 219));
-        requestTable.getTableHeader().setForeground(Color.BLACK);
-        requestTable.getTableHeader().setFont(requestTable.getTableHeader().getFont().deriveFont(Font.BOLD, 12f));
+        // USERS TAB
+        JPanel userPanel = new JPanel(new BorderLayout(0, 12));
+        userPanel.setBackground(JButtonStyle.BG_PAGE);
+        userPanel.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
 
-        JPanel userPanel = new JPanel(new BorderLayout(6, 6));
-        userPanel.setBackground(new Color(240, 243, 247));
-        JPanel userSearchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        userSearchPanel.setBackground(new Color(240, 243, 247));
-        userSearchPanel.add(new JLabel("Search (Name / Role / UserID):"));
+        JPanel userToolbar = new JPanel(new BorderLayout());
+        userToolbar.setOpaque(false);
+
+        JPanel userButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        userButtons.setOpaque(false);
+        JButton createBtn = new JButton("+ Create User");
+        JButton editBtn = new JButton("Manage Selected");
+        JButton historyBtn = new JButton("View History");
+        JButtonStyle.applyAccent(createBtn);
+        JButtonStyle.applySecondary(editBtn);
+        JButtonStyle.applySecondary(historyBtn);
+        userButtons.add(createBtn);
+        userButtons.add(editBtn);
+        userButtons.add(historyBtn);
+
+        JPanel userSearchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        userSearchPanel.setOpaque(false);
+        JLabel uSearchLbl = new JLabel("Search:");
+        uSearchLbl.setFont(uSearchLbl.getFont().deriveFont(Font.BOLD, 12f));
+        uSearchLbl.setForeground(JButtonStyle.TEXT_MUTED);
+        userSearchField.setPreferredSize(new Dimension(190, 32));
+        userSearchField.setBorder(JButtonStyle.createFieldBorder());
         JButton searchUsersBtn = new JButton("Search");
         JButton clearUserSearchBtn = new JButton("Clear");
         JButtonStyle.applySecondary(searchUsersBtn);
         JButtonStyle.applySecondary(clearUserSearchBtn);
+        userSearchPanel.add(uSearchLbl);
         userSearchPanel.add(userSearchField);
         userSearchPanel.add(searchUsersBtn);
         userSearchPanel.add(clearUserSearchBtn);
-        userPanel.add(userSearchPanel, BorderLayout.NORTH);
-        userPanel.add(new JScrollPane(userTable), BorderLayout.CENTER);
-        JPanel userButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        userButtons.setBackground(new Color(240, 243, 247));
-        JButton createBtn = new JButton("Create User");
-        JButton editBtn = new JButton("Manage (Edit) Selected");
-        JButton historyBtn = new JButton("View History of Selected");
-        JButtonStyle.applySecondary(createBtn);
-        JButtonStyle.applySecondary(editBtn);
-        JButtonStyle.applySecondary(historyBtn);
-        userButtons.add(createBtn); userButtons.add(editBtn); userButtons.add(historyBtn);
-        userPanel.add(userButtons, BorderLayout.SOUTH);
-        tabs.addTab("Users", userPanel);
 
-        JPanel reqPanel = new JPanel(new BorderLayout(6, 6));
-        reqPanel.setBackground(new Color(240, 243, 247));
-        JPanel requestSearchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        requestSearchPanel.setBackground(new Color(240, 243, 247));
-        requestSearchPanel.add(new JLabel("Search (Request ID / Resident ID / Status):"));
+        userToolbar.add(userButtons, BorderLayout.WEST);
+        userToolbar.add(userSearchPanel, BorderLayout.EAST);
+
+        JScrollPane userScrollPane = new JScrollPane(userTable);
+        userScrollPane.getViewport().setBackground(Color.WHITE);
+        userScrollPane.setBorder(BorderFactory.createLineBorder(JButtonStyle.BORDER_LIGHT, 1, true));
+
+        userPanel.add(userToolbar, BorderLayout.NORTH);
+        userPanel.add(userScrollPane, BorderLayout.CENTER);
+        tabs.addTab("  User Management  ", userPanel);
+
+        // REQUESTS TAB
+        JPanel reqPanel = new JPanel(new BorderLayout(0, 12));
+        reqPanel.setBackground(JButtonStyle.BG_PAGE);
+        reqPanel.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
+
+        JPanel reqToolbar = new JPanel(new BorderLayout());
+        reqToolbar.setOpaque(false);
+
+        JPanel reqButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        reqButtons.setOpaque(false);
+        JButton refreshReqBtn = new JButton("Refresh All");
+        JButton viewRequestDetailsBtn = new JButton("View Details");
+        JButton deleteRequestBtn = new JButton("Delete Request");
+        JButtonStyle.applySecondary(refreshReqBtn);
+        JButtonStyle.applyAccent(viewRequestDetailsBtn);
+        JButtonStyle.applyDanger(deleteRequestBtn);
+        reqButtons.add(viewRequestDetailsBtn);
+        reqButtons.add(refreshReqBtn);
+        reqButtons.add(deleteRequestBtn);
+
+        JPanel requestSearchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        requestSearchPanel.setOpaque(false);
+        JLabel rSearchLbl = new JLabel("Search:");
+        rSearchLbl.setFont(rSearchLbl.getFont().deriveFont(Font.BOLD, 12f));
+        rSearchLbl.setForeground(JButtonStyle.TEXT_MUTED);
+        requestSearchField.setPreferredSize(new Dimension(190, 32));
+        requestSearchField.setBorder(JButtonStyle.createFieldBorder());
         JButton searchRequestsBtn = new JButton("Search");
         JButton clearRequestSearchBtn = new JButton("Clear");
         JButtonStyle.applySecondary(searchRequestsBtn);
         JButtonStyle.applySecondary(clearRequestSearchBtn);
+        requestSearchPanel.add(rSearchLbl);
         requestSearchPanel.add(requestSearchField);
         requestSearchPanel.add(searchRequestsBtn);
         requestSearchPanel.add(clearRequestSearchBtn);
-        reqPanel.add(requestSearchPanel, BorderLayout.NORTH);
-        reqPanel.add(new JScrollPane(requestTable), BorderLayout.CENTER);
-        JPanel reqButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        reqButtons.setBackground(new Color(240, 243, 247));
-        JButton refreshReqBtn = new JButton("Refresh All Requests");
-        JButton viewRequestDetailsBtn = new JButton("View Details");
-        JButton deleteRequestBtn = new JButton("Delete Selected Request");
-        JButtonStyle.applySecondary(refreshReqBtn);
-        JButtonStyle.applySecondary(viewRequestDetailsBtn);
-        JButtonStyle.applySecondary(deleteRequestBtn);
-        reqButtons.add(refreshReqBtn);
-        reqButtons.add(viewRequestDetailsBtn);
-        reqButtons.add(deleteRequestBtn);
-        reqPanel.add(reqButtons, BorderLayout.SOUTH);
-        tabs.addTab("All Requests", reqPanel);
 
-        add(tabs, BorderLayout.CENTER);
+        reqToolbar.add(reqButtons, BorderLayout.WEST);
+        reqToolbar.add(requestSearchPanel, BorderLayout.EAST);
 
-        JButton logoutBtn = new JButton("Logout");
-        JButtonStyle.applySecondary(logoutBtn);
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        bottom.setBackground(new Color(240, 243, 247));
-        bottom.add(logoutBtn);
-        add(bottom, BorderLayout.SOUTH);
+        JScrollPane reqScrollPane = new JScrollPane(requestTable);
+        reqScrollPane.getViewport().setBackground(Color.WHITE);
+        reqScrollPane.setBorder(BorderFactory.createLineBorder(JButtonStyle.BORDER_LIGHT, 1, true));
 
+        reqPanel.add(reqToolbar, BorderLayout.NORTH);
+        reqPanel.add(reqScrollPane, BorderLayout.CENTER);
+        tabs.addTab("  All Assistance Requests  ", reqPanel);
+
+        mainContent.add(tabs, BorderLayout.CENTER);
+        add(mainContent, BorderLayout.CENTER);
+
+        // EVENT LISTENERS
         createBtn.addActionListener(e -> createUserDialog());
+        createMenuItem.addActionListener(e -> createUserDialog());
+
         editBtn.addActionListener(e -> editSelectedUser());
+        editMenuItem.addActionListener(e -> editSelectedUser());
+
         historyBtn.addActionListener(e -> { admin.viewUserHistory(); viewSelectedUserHistory(); });
+        historyMenuItem.addActionListener(e -> { admin.viewUserHistory(); viewSelectedUserHistory(); });
+
         searchUsersBtn.addActionListener(e -> refreshUserTable(userSearchField.getText().trim()));
         userSearchField.addActionListener(e -> refreshUserTable(userSearchField.getText().trim()));
         clearUserSearchBtn.addActionListener(e -> {
             userSearchField.setText("");
             refreshUserTable("");
         });
+
         refreshReqBtn.addActionListener(e -> {
             admin.viewAllRequest();
             refreshRequestTable(requestSearchField.getText().trim());
         });
+        refreshReqMenuItem.addActionListener(e -> {
+            admin.viewAllRequest();
+            refreshRequestTable(requestSearchField.getText().trim());
+        });
+
         searchRequestsBtn.addActionListener(e -> refreshRequestTable(requestSearchField.getText().trim()));
         requestSearchField.addActionListener(e -> refreshRequestTable(requestSearchField.getText().trim()));
         clearRequestSearchBtn.addActionListener(e -> {
             requestSearchField.setText("");
             refreshRequestTable("");
         });
+
         viewRequestDetailsBtn.addActionListener(e -> viewSelectedRequestDetails());
+        viewReqMenuItem.addActionListener(e -> viewSelectedRequestDetails());
+
         deleteRequestBtn.addActionListener(e -> deleteSelectedRequest());
+        deleteReqMenuItem.addActionListener(e -> deleteSelectedRequest());
+
         logoutBtn.addActionListener(e -> {
+            admin.logout();
+            dispose();
+            new LoginFrame(fileManager).setVisible(true);
+        });
+        logoutMenuItem.addActionListener(e -> {
             admin.logout();
             dispose();
             new LoginFrame(fileManager).setVisible(true);
@@ -165,16 +327,23 @@ public class AdminMenuFrame extends JFrame {
         userTableModel.setRowCount(0);
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
         List<User> users = fileManager.readUsers();
+
+        int totalUsers = users.size();
+        int residentCount = 0;
+        int staffCount = 0;
+
         for (User u : users) {
             String id = "-";
             String extra = "-";
             if (u instanceof Resident) {
+                residentCount++;
                 Resident resident = (Resident) u;
                 id = resident.getResidentId();
                 extra = resident.getAddress() + " / " + resident.getContactNo();
             } else if (u instanceof Admin) {
                 id = ((Admin) u).getAdminId();
             } else if (u instanceof Staff) {
+                staffCount++;
                 Staff staff = (Staff) u;
                 id = staff.getStaffId();
                 extra = "Handles: " + staff.getAssignedType();
@@ -183,12 +352,19 @@ public class AdminMenuFrame extends JFrame {
             if (!query.isEmpty() && !searchable.contains(query)) continue;
             userTableModel.addRow(new Object[]{u.getRole(), u.getFullName(), id, extra});
         }
+
+        userCountLabel.setText(String.valueOf(totalUsers));
+        residentCountLabel.setText(String.valueOf(residentCount));
+        staffCountLabel.setText(String.valueOf(staffCount));
     }
 
     private void refreshRequestTable(String searchTerm) {
         requestTableModel.setRowCount(0);
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
-        for (AssistanceRequest r : requestManager.getAllRequests()) {
+        List<AssistanceRequest> all = requestManager.getAllRequests();
+        requestCountLabel.setText(String.valueOf(all.size()));
+
+        for (AssistanceRequest r : all) {
             if (!query.isEmpty()
                     && !r.getRequestId().toLowerCase().contains(query)
                     && !r.getResidentId().toLowerCase().contains(query)

@@ -50,6 +50,7 @@ public class AdminMenuFrame extends JFrame {
     private List<AssistanceRequest> currentRequests = new ArrayList<>();
     private final JButton deleteRequestBtn = new JButton("Delete Request");
     private final JButton updateStatusBtn = new JButton("Update Status");
+    private final JButton assignStaffBtn = new JButton("Assign Staff");
     private final JPanel requestListCards = new JPanel(new CardLayout());
     private final JPanel requestHistoryPanel = new JPanel(new BorderLayout());
 
@@ -313,11 +314,13 @@ public class AdminMenuFrame extends JFrame {
         requestDetailsPanel.add(requestDetailsPlaceholder, BorderLayout.CENTER);
         JScrollPane reqDetailsScroll = new JScrollPane(requestDetailsPanel);
         reqDetailsScroll.setBorder(null);
+        styleActionButton(assignStaffBtn, false);
         styleActionButton(deleteRequestBtn, false);
         styleActionButton(updateStatusBtn, false);
         JPanel reqBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         reqBottom.setBackground(Color.WHITE);
         reqBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
+        reqBottom.add(assignStaffBtn);
         reqBottom.add(updateStatusBtn);
         reqBottom.add(deleteRequestBtn);
         JPanel reqMiddle = createTitledPanel("  Request Details", reqDetailsScroll);
@@ -361,6 +364,7 @@ public class AdminMenuFrame extends JFrame {
         fileReqMenuItem.addActionListener(e -> fileRequestDialog());
         refreshReqMenuItem.addActionListener(e -> { admin.viewAllRequest(); refreshRequestList(requestSearchField.getText().trim()); });
         updateStatusBtn.addActionListener(e -> updateSelectedRequestStatus());
+        assignStaffBtn.addActionListener(e -> assignStaffToSelectedRequest());
         updateStatusMenuItem.addActionListener(e -> updateSelectedRequestStatus());
         deleteRequestBtn.addActionListener(e -> deleteSelectedRequest());
         deleteReqMenuItem.addActionListener(e -> deleteSelectedRequest());
@@ -380,12 +384,11 @@ public class AdminMenuFrame extends JFrame {
                 int idx = requestList.getSelectedIndex();
                 boolean hasSel = idx >= 0 && idx < currentRequests.size();
                 styleActionButton(deleteRequestBtn, hasSel);
-                boolean canUpdate = false;
-                if (hasSel) {
-                    String st = currentRequests.get(idx).getStatus();
-                    canUpdate = st != null && !"Cancelled".equalsIgnoreCase(st);
-                }
+                boolean canUpdate = hasSel && Admin.isOpen(currentRequests.get(idx));
+                boolean canAssign = hasSel
+                        && "Pending".equalsIgnoreCase(currentRequests.get(idx).getStatus());
                 styleActionButton(updateStatusBtn, canUpdate);
+                styleActionButton(assignStaffBtn, canAssign);
             }
         });
 
@@ -549,6 +552,7 @@ public class AdminMenuFrame extends JFrame {
             showSelectedRequestHistory();
             styleActionButton(deleteRequestBtn, false);
             styleActionButton(updateStatusBtn, false);
+            styleActionButton(assignStaffBtn, false);
         }
     }
 
@@ -569,8 +573,8 @@ public class AdminMenuFrame extends JFrame {
     private void updateSelectedRequestStatus() {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
-        if ("Cancelled".equalsIgnoreCase(req.getStatus())) {
-            JOptionPane.showMessageDialog(this, "Cancelled requests cannot be updated.",
+        if (!Admin.isOpen(req)) {
+            JOptionPane.showMessageDialog(this, "Completed or cancelled requests cannot be updated.",
                     "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -618,6 +622,90 @@ public class AdminMenuFrame extends JFrame {
                     + " status from " + oldStatus + " to " + newStatus);
             refreshRequestList(requestSearchField.getText().trim());
             JOptionPane.showMessageDialog(dialog, "Status updated to " + newStatus + ".");
+            dialog.dispose();
+        });
+        closeBtn.addActionListener(e -> dialog.dispose());
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(440, 300));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    /** Lets the admin pick the staff member of the matching type who manages a Pending request. */
+    private void assignStaffToSelectedRequest() {
+        AssistanceRequest req = getSelectedRequest();
+        if (req == null) return;
+        if (!"Pending".equalsIgnoreCase(req.getStatus())) {
+            JOptionPane.showMessageDialog(this, "Only Pending requests can be assigned or reassigned.",
+                    "Assignment Not Allowed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        List<Staff> eligible = new ArrayList<>();
+        for (User u : fileManager.readUsers()) {
+            if (u instanceof Staff s && s.canHandle(req)) {
+                eligible.add(s);
+            }
+        }
+        if (eligible.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No " + req.getType() + " staff accounts exist. Create one first.",
+                    "No Eligible Staff", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JComboBox<String> staffBox = new JComboBox<>();
+        staffBox.addItem("Unassigned");
+        int currentIdx = 0;
+        for (int i = 0; i < eligible.size(); i++) {
+            Staff s = eligible.get(i);
+            staffBox.addItem(s.getStaffId() + " - " + s.getFullName());
+            if (s.getStaffId().equals(req.getAssignedStaffId())) currentIdx = i + 1;
+        }
+        staffBox.setSelectedIndex(currentIdx);
+
+        String current = req.isAssigned() ? req.getAssignedStaffId() : "Unassigned";
+
+        JPanel panel = new JPanel(new GridLayout(0, 2, 12, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        panel.setBackground(Color.WHITE);
+        panel.add(boldLabel("Request ID"));
+        panel.add(new JLabel(req.getRequestId()));
+        panel.add(boldLabel("Type"));
+        panel.add(new JLabel(req.getType()));
+        panel.add(boldLabel("Current Staff"));
+        panel.add(new JLabel(current));
+        panel.add(boldLabel("Assign To"));
+        panel.add(staffBox);
+
+        JDialog dialog = new JDialog(this, "Assign Staff", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(panel, BorderLayout.CENTER);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+        buttons.setBackground(Color.WHITE);
+        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
+        JButton saveBtn = createDarkBlueButton("Save Assignment");
+        JButton closeBtn = createDarkBlueButton("Close");
+        buttons.add(closeBtn);
+        buttons.add(saveBtn);
+        dialog.add(buttons, BorderLayout.SOUTH);
+
+        saveBtn.addActionListener(e -> {
+            int choice = staffBox.getSelectedIndex();
+            Staff chosen = choice <= 0 ? null : eligible.get(choice - 1);
+            try {
+                admin.assignStaff(req, chosen);
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(dialog, ex.getMessage(),
+                        "Assignment Failed", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            logAdminAction("Assigned request " + req.getRequestId() + " to "
+                    + (chosen == null ? "no staff" : chosen.getStaffId()));
+            refreshRequestList(requestSearchField.getText().trim());
+            JOptionPane.showMessageDialog(dialog, chosen == null
+                    ? "Assignment removed."
+                    : "Request assigned to " + chosen.getFullName() + ".");
             dialog.dispose();
         });
         closeBtn.addActionListener(e -> dialog.dispose());
@@ -691,6 +779,18 @@ public class AdminMenuFrame extends JFrame {
             if (requestId.equals(entry.getRequestId())) {
                 events.add(new TimelineEvent(entry.getProcessedAt(),
                         "Status changed to " + entry.getStatus(), "Staff ID: " + entry.getStaffId()));
+            }
+        }
+        // Admin log entries that mention this request (assignments and status changes).
+        for (String[] parts : readAdminHistory()) {
+            String action = parts[1];
+            // Match the request ID as a whole word, so REQ4005 doesn't match REQ40051.
+            if (!action.contains(" " + requestId + " ")) continue;
+            try {
+                java.time.LocalDateTime at = java.time.LocalDateTime.parse(parts[0], AssistanceRequest.DT_FMT);
+                events.add(new TimelineEvent(at, action, "Admin ID: " + parts[2]));
+            } catch (Exception ignored) {
+                // Skip lines with an unexpected timestamp.
             }
         }
         events.sort((a, b) -> a.at.compareTo(b.at));
@@ -1044,15 +1144,9 @@ public class AdminMenuFrame extends JFrame {
         JTextField userIdField = new JTextField(oldUserId);
         userIdField.setEditable(false);
         userIdField.setBackground(new Color(241, 245, 249));
-        String address = "";
-        String contact = "";
-        if (u instanceof Resident) {
-            Resident resident = (Resident) u;
-            address = resident.getAddress();
-            contact = resident.getContactNo();
-        }
-        JTextField addressField = new JTextField(address);
-        JTextField contactField = new JTextField(contact);
+        // Every role stores address and contact, so load them for all users.
+        JTextField addressField = new JTextField(u.getAddress());
+        JTextField contactField = new JTextField(u.getContactNo());
         styleFormField(nameField);
         styleFormField(passwordField);
         styleFormField(userIdField);
@@ -1064,28 +1158,20 @@ public class AdminMenuFrame extends JFrame {
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(24, 28, 16, 28));
 
+        // Address and contact are shown for every role.
         Runnable rebuildFields = () -> {
-            String selectedRole = (String) roleBox.getSelectedItem();
             panel.removeAll();
             panel.add(formRow("Role", roleBox));
             panel.add(formRow("Name", nameField));
             panel.add(formRow("Password", passwordField));
             panel.add(formRow("User ID", userIdField));
-            if ("Resident".equals(selectedRole)) {
-                panel.add(formRow("Address", addressField));
-                panel.add(formRow("Contact No", contactField));
-            }
+            panel.add(formRow("Address *", addressField));
+            panel.add(formRow("Contact No *", contactField));
             panel.revalidate();
             panel.repaint();
-            dialogPackSafe();
         };
-
-        // Re-validate Resident fields whenever the dialog is re-opened/fields rebuilt
-        // (e.g., role switching for Admin/Staff already handled by rebuildFields,
-        // but a direct re-open should also re-check the stored Resident fields).
         rebuildFields.run();
 
-        final JDialog[] dialogRef = new JDialog[1];
         // Residents may not change role, so the selector is locked for them.
         roleBox.setEnabled(!(u instanceof Resident));
         roleBox.addActionListener(e -> {
@@ -1099,7 +1185,6 @@ public class AdminMenuFrame extends JFrame {
             rebuildFields.run();
         });
         JDialog dialog = new JDialog(this, "Manage User", true);
-        dialogRef[0] = dialog;
         dialog.setLayout(new BorderLayout());
         JScrollPane scroll = new JScrollPane(panel);
         scroll.setBorder(null);
@@ -1138,11 +1223,21 @@ public class AdminMenuFrame extends JFrame {
             String newName = nameField.getText().trim();
             String newPassword = passwordField.getText().trim();
             String newUserId = userIdField.getText().trim();
+            String newAddress = addressField.getText().trim();
+            String newContact = contactField.getText().trim();
             // Enforced here as well as in the UI: a Resident can never change role.
             String newRole = (u instanceof Resident) ? "Resident" : (String) roleBox.getSelectedItem();
-            if (newName.isEmpty() || newPassword.isEmpty() || newUserId.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Name, password, and UserID are required.",
+
+            if (newName.isEmpty() || newPassword.isEmpty() || newUserId.isEmpty()
+                    || newAddress.isEmpty() || newContact.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Name, password, UserID, address, and contact number are all required.",
                         "Missing Information", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (!newContact.matches("\\+?[0-9]+")) {
+                JOptionPane.showMessageDialog(dialog, "Contact number must be numeric.",
+                        "Invalid Input", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             String requiredPrefix = getUserIdPrefix(newRole);
@@ -1159,37 +1254,22 @@ public class AdminMenuFrame extends JFrame {
                     return;
                 }
             }
-            User updatedUser;
-            String newAddress = addressField.getText().trim();
-            String newContact = contactField.getText().trim();
-            if ("Resident".equals(newRole)) {
-                if (newAddress.isEmpty()) {
-                    JOptionPane.showMessageDialog(dialog, "Resident address is required.",
-                            "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-                if (!newContact.matches("\\+?[0-9]+")) {
-                    JOptionPane.showMessageDialog(dialog, "Contact number must be numeric.",
-                            "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-                updatedUser = new Resident(newName, newPassword, newUserId, newAddress, newContact);
-            } else if ("Admin".equals(newRole)) {
-                updatedUser = new Admin(newName, newPassword, newUserId);
-            } else if ("MedicalStaff".equals(newRole)) {
-                updatedUser = new MedicalStaff(newName, newPassword, newUserId);
-            } else if ("FoodStaff".equals(newRole)) {
-                updatedUser = new FoodStaff(newName, newPassword, newUserId);
-            } else {
-                updatedUser = new TransportationStaff(newName, newPassword, newUserId);
-            }
+
+            User updatedUser = switch (newRole) {
+                case "Resident" -> new Resident(newName, newPassword, newUserId, newAddress, newContact);
+                case "Admin" -> new Admin(newName, newPassword, newUserId);
+                case "MedicalStaff" -> new MedicalStaff(newName, newPassword, newUserId);
+                case "FoodStaff" -> new FoodStaff(newName, newPassword, newUserId);
+                default -> new TransportationStaff(newName, newPassword, newUserId);
+            };
+            // Set address and contact on every role, so they are saved for Admin and staff too.
+            updatedUser.setAddress(newAddress);
+            updatedUser.setContactNo(newContact);
             if (updatedUser instanceof Staff) {
                 ((Staff) updatedUser).setAssignedType(getAssignedTypeForRole(newRole));
             }
-            String err = null;
-            if (updatedUser instanceof Resident r) {
-                err = r.validate();
-            }
+
+            String err = updatedUser.validateContactDetails();
             if (err != null) {
                 JOptionPane.showMessageDialog(dialog, err, "Invalid Input", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -1219,14 +1299,10 @@ public class AdminMenuFrame extends JFrame {
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
 
-        dialog.setSize(560, 480);
-        dialog.setMinimumSize(new Dimension(520, 420));
+        dialog.setSize(560, 540);
+        dialog.setMinimumSize(new Dimension(520, 480));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
-    }
-
-    private void dialogPackSafe() {
-        // no-op helper for rebuild; dialog size is fixed
     }
 
     private String getAssignedTypeForRole(String role) {

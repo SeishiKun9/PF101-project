@@ -378,6 +378,13 @@ public class FileManager {
         appendLine(STAFF_HISTORY, history.toFileLine());
     }
 
+        /** Records an admin action on a request (assignment or status change) so it shows in the request timeline. */
+    public void recordAdminRequestAction(String adminId, AssistanceRequest request, String action) {
+        StaffRequestHistory history = new StaffRequestHistory(adminId, request.getRequestId(),
+                request.getResidentId(), request.getType(), action, LocalDateTime.now());
+        appendLine(STAFF_HISTORY, history.toFileLine());
+    }
+
     public List<StaffRequestHistory> readStaffRequestHistory() {
         return readRecords(STAFF_HISTORY, FileManager::parseStaffHistoryLine);
     }

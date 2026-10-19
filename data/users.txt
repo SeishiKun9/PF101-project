@@ -17,3 +17,4 @@ MedicalStaff|f|f|STF2007|Medical
 Admin|s|s|ADM1004
 Admin|s|s|ADM1005
 FoodStaff|s|s|STF2008|Medical|s|23
+FoodStaff|Allen Aguiman|Aguiman123|STF2009|Medical|Booy|09876543213

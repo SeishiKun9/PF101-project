@@ -1,37 +1,75 @@
+
 package model;
 
-import java.io.Serializable;
-
-public abstract class User implements Serializable {
-    private static final long serialVersionUID = 1L;
+public abstract class User {
     private String password;
     private String fullName;
     private String role;
-    private boolean credentialsVerified;
+    private String address;
+    private String contactNo;
 
-    public User(String fullName, String password, String role) {
+      public User(String fullName, String password, String role) {
         this.fullName = fullName;
         this.password = password;
         this.role = role;
     }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
-
-    public boolean authenticate(String attemptPassword) {
-        credentialsVerified = password != null && password.equals(attemptPassword);
-        return credentialsVerified;
+    public String getAddress() {
+        return address;
     }
 
-    /** Completes login after the calling interface has verified the password. */
-    public boolean login() {
-        boolean successfulLogin = credentialsVerified;
-        credentialsVerified = false;
-        return successfulLogin;
+    public void setAddress(String address) {
+        this.address = address == null ? "" : address.trim();
+    }
+
+    public String getContactNo() {
+        return contactNo;
+    }
+
+    public void setContactNo(String contactNo) {
+        this.contactNo = contactNo == null ? "" : contactNo.trim();
+    }
+
+    /** Returns an error message if address or contact is missing or invalid, otherwise null. */
+    public String validateContactDetails() {
+        if (address == null || address.trim().isEmpty()) {
+            return "Address is required.";
+        }
+        if (contactNo == null || contactNo.trim().isEmpty()) {
+            return "Contact number is required.";
+        }
+        if (!contactNo.matches("\\+?[0-9]+")) {
+            return "Contact number must be numeric.";
+        }
+        return null;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public boolean authenticate(String attemptPassword) {
+        return password != null && password.equals(attemptPassword);
     }
 
     public void logout() {

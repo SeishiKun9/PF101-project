@@ -12,8 +12,11 @@ public class MedicalStaff extends Staff {
         new StaffMenuFrame(this).setVisible(true);
     }
 
-    @Override
+       @Override
     public String toFileLine() {
-        return String.join("|", "MedicalStaff", getFullName(), getPassword(), getStaffId(), getAssignedType());
+        return String.join("|", "FoodStaff", AssistanceRequest.encodeField(getFullName()),
+                AssistanceRequest.encodeField(getPassword()), AssistanceRequest.encodeField(getStaffId()),
+                AssistanceRequest.encodeField(getAssignedType()),
+                AssistanceRequest.encodeField(getAddress()), AssistanceRequest.encodeField(getContactNo()));
     }
 }

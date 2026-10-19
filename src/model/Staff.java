@@ -1,101 +1,193 @@
+
 package model;
 
 import storage.FileManager;
 import storage.RequestManager;
 import ui.StaffMenuFrame;
 
-/**
- * Staff: base class for barangay personnel who process assistance requests
- * of a specific assigned type (Medical, Food, Transportation).
- */
 public class Staff extends User {
-    private static final long serialVersionUID = 1L;
+
     private String staffId;
     private String assignedType;
 
-    public Staff(String name, String password, String staffId, String assignedType) {
-        this(name, password, "Staff", staffId, assignedType);
-    }
-
-    // Protected-style constructor used by subclasses to set their own role label.
-    protected Staff(String name, String password, String role, String staffId, String assignedType) {
+  
+        public Staff(String name, String password, String role,
+                 String staffId, String assignedType) {
         super(name, password, role);
         this.staffId = staffId;
         this.assignedType = assignedType;
     }
 
-    public String getStaffId() { return staffId; }
-    public void setStaffId(String staffId) { this.staffId = staffId; }
-    @Override public String getUserId() { return staffId; }
-    public String getAssignedType() { return assignedType; }
-    public void setAssignedType(String assignedType) { this.assignedType = assignedType; }
+    public String getStaffId() {
+        return staffId;
+    }
 
-    // Conceptual entry points; full logic lives in StaffMenuFrame + FileManager.
-    public void viewRequests() { System.out.println(getFullName() + " is viewing requests."); }
-    public void searchRequest() { System.out.println(getFullName() + " is searching a request."); }
+    public void setStaffId(String staffId) {
+        this.staffId = staffId;
+    }
 
-    /** True when this staff member is allowed to touch the given request (same assigned type). */
+    @Override
+    public String getUserId() {
+        return staffId;
+    }
+
+    public String getAssignedType() {
+        return assignedType;
+    }
+
+    public void setAssignedType(String assignedType) {
+        this.assignedType = assignedType;
+    }
+
     public boolean canHandle(AssistanceRequest request) {
-        return request != null && assignedType != null
+        return request != null
+                && assignedType != null
                 && assignedType.equalsIgnoreCase(request.getType());
     }
 
-    private void requireSameType(AssistanceRequest request) {
+    private void checkRequestType(AssistanceRequest request) {
         if (!canHandle(request)) {
             throw new IllegalArgumentException(
-                    "Staff (" + assignedType + ") cannot process "
-                            + (request == null ? "null" : request.getType()) + " requests.");
+                    "You cannot handle this request type.");
         }
     }
 
-    /**
-     * Files an assistance request on behalf of a resident.
-     * The request is stored under the resident's ID and must match this
-     * staff member's assigned assistance type.
-     */
-    public void fileRequestFor(String residentId, AssistanceRequest request) {
+    private void checkOwnership(AssistanceRequest request) {
+        if (request == null
+                || !staffId.equals(request.getAssignedStaffId())) {
+            throw new IllegalStateException(
+                    "Claim the request first.");
+        }
+    }
+
+    private void checkUpdatable(AssistanceRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Request is required.");
+        }
+
+        String status = request.getStatus();
+
+        if ("Completed".equalsIgnoreCase(status)
+                || "Cancelled".equalsIgnoreCase(status)) {
+            throw new IllegalStateException(
+                    "Completed or Cancelled requests cannot be updated.");
+        }
+    }
+
+    public void fileRequestFor(String residentId,
+                               AssistanceRequest request) {
         if (residentId == null || residentId.trim().isEmpty()) {
-            throw new IllegalArgumentException("A resident must be selected.");
+            throw new IllegalArgumentException(
+                    "A resident must be selected.");
         }
-        if (request == null || !residentId.equals(request.getResidentId())) {
-            throw new IllegalArgumentException("Request must belong to the selected resident.");
+
+        if (request == null
+                || !residentId.equals(request.getResidentId())) {
+            throw new IllegalArgumentException(
+                    "Request must belong to the selected resident.");
         }
-        requireSameType(request);
-        FileManager fileManager = new FileManager();
-        new RequestManager(fileManager).addRequest(request);
-        fileManager.recordStaffRequestAction(this, request, "Filed");
+
+        checkRequestType(request);
+
+        FileManager fm = new FileManager();
+        RequestManager rm = new RequestManager(fm);
+
+        if (rm.findRequest(request.getRequestId()) != null) {
+            throw new IllegalArgumentException(
+                    "Request ID already exists.");
+        }
+
+        rm.addRequest(request);
+        fm.recordStaffRequestAction(this, request, "Filed");
     }
 
-    /** Updates the status of a request of the staff member's own assigned type. */
-    public void updateRequestStatus(AssistanceRequest request, String newStatus) {
-        requireSameType(request);
+    public void claimRequest(AssistanceRequest request) {
+        checkRequestType(request);
+
+        if (!"Pending".equalsIgnoreCase(request.getStatus())) {
+            throw new IllegalStateException(
+                    "Only Pending requests can be claimed.");
+        }
+
+        if (request.isAssigned()
+                && !staffId.equals(request.getAssignedStaffId())) {
+            throw new IllegalStateException(
+                    "This request is already assigned to another staff member.");
+        }
+
+        if (staffId.equals(request.getAssignedStaffId())) {
+            return;
+        }
+
+        request.setAssignedStaffId(staffId);
+
+        FileManager fm = new FileManager();
+        new RequestManager(fm).updateRequest(request);
+        fm.recordStaffRequestAction(this, request, "Claimed");
+    }
+
+    public void updateRequestStatus(AssistanceRequest request,
+                                    String newStatus) {
+        checkRequestType(request);
+        checkOwnership(request);
+        checkUpdatable(request);
+
         if (newStatus == null || newStatus.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status is required.");
+            throw new IllegalArgumentException(
+                    "Status is required.");
         }
+
         request.updateStatus(newStatus);
-        FileManager fileManager = new FileManager();
-        fileManager.recordStaffRequestAction(this, request, newStatus);
-        new RequestManager(fileManager).updateRequest(request);
+
+        FileManager fm = new FileManager();
+        fm.recordStaffRequestAction(this, request, newStatus);
+        new RequestManager(fm).updateRequest(request);
     }
 
-    /**
-     * Deletes a request of the staff member's own assigned type.
-     * The deletion is recorded in staff history first so the audit trail survives.
-     */
-    public void deleteRequest(AssistanceRequest request) {
-        requireSameType(request);
-        FileManager fileManager = new FileManager();
-        fileManager.recordStaffRequestAction(this, request, "Deleted");
-        fileManager.deleteRequestFromFile(request.getRequestId());
+    public void releaseRequest(AssistanceRequest request) {
+        checkRequestType(request);
+        checkOwnership(request);
+
+        request.setAssignedStaffId(null);
+
+        FileManager fm = new FileManager();
+        new RequestManager(fm).updateRequest(request);
+        fm.recordStaffRequestAction(this, request, "Released");
     }
+
+    public void deleteRequest(AssistanceRequest request) {
+        checkRequestType(request);
+
+        FileManager fm = new FileManager();
+        fm.recordStaffRequestAction(this, request, "Deleted");
+        fm.deleteRequestFromFile(request.getRequestId());
+    }
+
+    public void viewRequests() {
+    System.out.println(getFullName()
+            + " is viewing requests.");
+}
+
+public void searchRequest() {
+    System.out.println(getFullName()
+            + " is searching for a request.");
+}
 
     @Override
     public void showMenu() {
         new StaffMenuFrame(this).setVisible(true);
     }
-
     @Override
     public String toFileLine() {
-        return String.join("|", "Staff", getFullName(), getPassword(), staffId, assignedType);
+        return String.join("|",
+                "Staff",
+                AssistanceRequest.encodeField(getFullName()),
+                AssistanceRequest.encodeField(getPassword()),
+                AssistanceRequest.encodeField(staffId),
+                AssistanceRequest.encodeField(
+                        assignedType == null ? "" : assignedType),
+                AssistanceRequest.encodeField(getAddress()),
+                AssistanceRequest.encodeField(getContactNo()));
     }
 }

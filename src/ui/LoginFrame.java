@@ -10,7 +10,7 @@ import java.util.List;
  * Formal login window for Barangay Assistance System.
  */
 public class LoginFrame extends JFrame {
-    private static final long serialVersionUID = 1L;
+
     private final FileManager fileManager;
     private final JTextField userIdField = new JTextField();
     private final JPasswordField passwordField = new JPasswordField();
@@ -34,11 +34,11 @@ public class LoginFrame extends JFrame {
         headerPanel.setPreferredSize(new Dimension(860, 90));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(18, 40, 18, 40));
 
-        JLabel titleLabel = new JLabel("Barangay Assistance System");
+        JLabel titleLabel = new JLabel("OTW: Barangay Assistance System");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
         titleLabel.setForeground(Color.WHITE);
 
-        JLabel subtitleLabel = new JLabel("Official Portal for Community Public Assistance");
+        JLabel subtitleLabel = new JLabel("Official Portal for Barangay Public Assistance");
         subtitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
         subtitleLabel.setForeground(new Color(180, 200, 230));
 
@@ -168,7 +168,7 @@ public class LoginFrame extends JFrame {
         for (User u : users) {
             String storedUserId = getUserId(u);
             if (storedUserId != null && storedUserId.equalsIgnoreCase(userId)
-                    && hasValidPrefix(storedUserId) && u.authenticate(password) && u.login()) {
+                    && hasValidPrefix(storedUserId) && u.authenticate(password)) {
                 dispose();
                 u.showMenu();
                 return;

@@ -8,33 +8,49 @@ import ui.ResidentMenuFrame;
  * Resident: a barangay constituent who can submit requests, view only their
  * own requests/history, and cancel only their own pending requests.
  * Residents cannot update request details/status or delete requests.
+ * Address and contact number are stored in User.
  */
 public class Resident extends User {
-    private static final long serialVersionUID = 1L;
-    private String residentId;
-    private String address;
-    private String contactNo;
 
-    public Resident(String fullName, String password, String residentId, String address, String contactNo) {
-        super(fullName, password, "Resident");
-        this.residentId = residentId;
-        this.address = address;
-        this.contactNo = contactNo;
-    }
+    private String residentId;
+
+     public Resident(String fullName, String password, String residentId, String address, String contactNo) {
+       super(fullName, password, "Resident");
+       this.residentId = residentId;
+       setAddress(address);
+       setContactNo(contactNo);
+   }
 
     public String getResidentId() { return residentId; }
     public void setResidentId(String residentId) { this.residentId = residentId; }
     @Override public String getUserId() { return residentId; }
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
-    public String getContactNo() { return contactNo; }
-    public void setContactNo(String contactNo) { this.contactNo = contactNo; }
+
+    /**
+     * Validates that a Resident record is complete. Returns null when valid,
+     * or the first validation error message found.
+     */
+    public String validate() {
+        if (getAddress() == null || getAddress().trim().isEmpty()) {
+            return "Resident address is required.";
+        }
+        if (getContactNo() == null || getContactNo().trim().isEmpty()) {
+            return "Contact number is required.";
+        }
+        if (!getContactNo().matches("\\+?[0-9]+")) {
+            return "Contact number must be numeric.";
+        }
+        return null;
+    }
 
     public void submitRequest(AssistanceRequest request) {
         if (request == null || !residentId.equals(request.getResidentId())) {
             throw new IllegalArgumentException("Request must belong to this resident.");
         }
-        new RequestManager(new FileManager()).addRequest(request);
+        RequestManager rm = new RequestManager(new FileManager());
+        if (rm.findRequest(request.getRequestId()) != null) {
+            throw new IllegalArgumentException("Request ID " + request.getRequestId() + " already exists.");
+        }
+        rm.addRequest(request);
     }
 
     public void viewMyRequest() { System.out.println(getFullName() + " is viewing their requests."); }
@@ -66,6 +82,9 @@ public class Resident extends User {
 
     @Override
     public String toFileLine() {
-        return String.join("|", "Resident", getFullName(), getPassword(), residentId, address, contactNo);
+        return String.join("|", "Resident", AssistanceRequest.encodeField(getFullName()),
+                AssistanceRequest.encodeField(getPassword()), AssistanceRequest.encodeField(residentId),
+                AssistanceRequest.encodeField(getAddress()),
+                AssistanceRequest.encodeField(getContactNo()));
     }
 }

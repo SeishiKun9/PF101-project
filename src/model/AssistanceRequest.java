@@ -1,12 +1,10 @@
 package model;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+public abstract class AssistanceRequest {
 
-public abstract class AssistanceRequest implements Serializable {
-    private static final long serialVersionUID = 1L;
     public static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     private String requestId;
@@ -17,6 +15,7 @@ public abstract class AssistanceRequest implements Serializable {
     private String additionalDetails;
     private String status;
     private LocalDateTime dateRequested;
+    private String assignedStaffId;
 
     public AssistanceRequest(String requestId, String residentId, String type, String location,
                              LocalDateTime timeNeeded, String additionalDetails, String status,
@@ -33,37 +32,51 @@ public abstract class AssistanceRequest implements Serializable {
 
     public String getRequestId() { return requestId; }
     public void setRequestId(String requestId) { this.requestId = requestId; }
+
     public String getResidentId() { return residentId; }
     public void setResidentId(String residentId) { this.residentId = residentId; }
+
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
     public LocalDateTime getTimeNeeded() { return timeNeeded; }
     public void setTimeNeeded(LocalDateTime timeNeeded) { this.timeNeeded = timeNeeded; }
+
     public String getAdditionalDetails() { return additionalDetails; }
     public void setAdditionalDetails(String additionalDetails) { this.additionalDetails = additionalDetails; }
-    public String getDetails() { return getAdditionalDetails(); }
-    public void setDetails(String details) { setAdditionalDetails(details); }
+
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
     public LocalDateTime getDateRequested() { return dateRequested; }
     public void setDateRequested(LocalDateTime dateRequested) { this.dateRequested = dateRequested; }
 
-    public void updateStatus(String newStatus) {
-        this.status = newStatus;
+    /** Staff ID that claimed this request, or null if unassigned. */
+    public String getAssignedStaffId() { return assignedStaffId; }
+    public void setAssignedStaffId(String assignedStaffId) { this.assignedStaffId = assignedStaffId; }
+
+    public boolean isAssigned() {
+        return assignedStaffId != null && !assignedStaffId.trim().isEmpty();
     }
 
-    /** Prints the request's details to the console. Subclasses override to add their own fields. */
+    public void updateStatus(String newStatus) { this.status = newStatus; }
+
+    /** Aliases kept for existing callers. */
+    public String getDetails() { return additionalDetails; }
+    public void setDetails(String details) { this.additionalDetails = details; }
+
     public void displayDetails() {
         System.out.println(toDisplaySummary());
     }
 
-    /** Human-readable summary used by GUI tables/dialogs. Subclasses override (polymorphism). */
     public String toDisplaySummary() {
         return "[" + type + "] " + requestId + " - " + status + " - " + additionalDetails;
     }
 
+    /** Fields shared by every request type, in file order. */
     protected String commonFieldsForFile(String recordType) {
         return String.join("|", "V2", encodeField(recordType), encodeField(requestId),
                 encodeField(residentId), encodeField(type), encodeField(location),
@@ -71,11 +84,24 @@ public abstract class AssistanceRequest implements Serializable {
                 dateRequested.format(DT_FMT));
     }
 
+    /** Assignee as a trailing file field; empty when unassigned. */
+    protected String encodeAssigneeField() {
+        return assignedStaffId == null ? "" : encodeField(assignedStaffId);
+    }
+
+    /** Reads the trailing assignee field; returns "" when missing (older files). */
+    public static String decodeAssigneeField(String value) {
+        return value == null ? "" : decodeField(value).trim();
+    }
+
+    /** Escapes characters that would break the pipe-separated file format. */
     public static String encodeField(String value) {
+        if (value == null) return "";
         return value.replace("%", "%25").replace("|", "%7C")
                 .replace("\r", "%0D").replace("\n", "%0A");
     }
 
+    /** Reverses encodeField. */
     public static String decodeField(String value) {
         return value.replace("%7C", "|").replace("%0D", "\r")
                 .replace("%0A", "\n").replace("%25", "%");

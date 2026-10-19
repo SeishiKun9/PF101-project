@@ -4,3 +4,16 @@ FoodStaff|Aling Nena|food123|STF2001|Food
 TransportationStaff|Mang Tomas|trans123|STF2002|Transportation
 Resident|Juan Dela Cruz|res123|RSD3000|123 Rizal St.|917123456
 Resident|Sarah Mae Hinayon|abcd1234|RSD3001|Purok 4|09921611211
+Resident|Mark Dela Cruz|Cruz3003|RSD3002|Purok 3, Mapayapa, Brgy. Silangan|09786547812
+TransportationStaff|Leon Suarez|trans234|STF2003|Transportation
+TransportationStaff|Yohan Imnida|imnida2345|STF2004|Transportation
+Admin|John Ladaran|ladaran123|ADM1001
+Admin|Christian Angoy|angoy123|ADM1002
+FoodStaff|Luis Manzano|manzano123|STF2005|Food
+Resident|rORY|ASSS|RSD3003||09921611211
+Admin|d|w|ADM1003
+MedicalStaff|f|f|STF2006|Medical
+MedicalStaff|f|f|STF2007|Medical
+Admin|s|s|ADM1004
+Admin|s|s|ADM1005
+FoodStaff|s|s|STF2008|Medical|s|23

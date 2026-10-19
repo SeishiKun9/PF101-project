@@ -2,9 +2,8 @@ package model;
 
 import ui.StaffMenuFrame;
 
-/** TransportationStaff: handles Transportation-type assistance requests. Overrides showMenu(). */
 public class TransportationStaff extends Staff {
-    private static final long serialVersionUID = 1L;
+
     public TransportationStaff(String name, String password, String staffId) {
         super(name, password, "TransportationStaff", staffId, "Transportation");
     }
@@ -14,8 +13,11 @@ public class TransportationStaff extends Staff {
         new StaffMenuFrame(this).setVisible(true);
     }
 
-    @Override
+      @Override
     public String toFileLine() {
-        return String.join("|", "TransportationStaff", getFullName(), getPassword(), getStaffId(), getAssignedType());
+        return String.join("|", "FoodStaff", AssistanceRequest.encodeField(getFullName()),
+                AssistanceRequest.encodeField(getPassword()), AssistanceRequest.encodeField(getStaffId()),
+                AssistanceRequest.encodeField(getAssignedType()),
+                AssistanceRequest.encodeField(getAddress()), AssistanceRequest.encodeField(getContactNo()));
     }
 }

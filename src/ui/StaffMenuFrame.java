@@ -10,12 +10,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * GUI shared by MedicalStaff, FoodStaff, and TransportationStaff.
- * Styled to match ResidentMenuFrame (dark blue only).
- */
+
 public class StaffMenuFrame extends JFrame {
-    private static final long serialVersionUID = 1L;
     private final Staff staff;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);
@@ -33,6 +29,8 @@ public class StaffMenuFrame extends JFrame {
     private List<AssistanceRequest> currentRequests = new ArrayList<>();
     private final JButton updateStatusBtn = new JButton("Update Status");
     private final JButton deleteBtn = new JButton("Delete Request");
+    private final JButton claimBtn = new JButton("Claim");
+    private final JComboBox<String> assignmentFilterBox = new JComboBox<>(new String[]{"All", "Unassigned", "Mine"});
 
     public StaffMenuFrame(Staff staff) {
         super("Staff Menu - " + staff.getFullName() + " (" + staff.getAssignedType() + ")");
@@ -113,11 +111,17 @@ public class StaffMenuFrame extends JFrame {
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(180, 190, 210), 1),
                 BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+        JLabel viewLbl = new JLabel("Show:");
+        viewLbl.setFont(viewLbl.getFont().deriveFont(Font.BOLD, 12f));
+        viewLbl.setForeground(DARK_BLUE);
+        assignmentFilterBox.setPreferredSize(new Dimension(110, 30));
         JButton searchBtn = createDarkBlueButton("Search");
         JButton clearBtn = createDarkBlueButton("Clear");
         JButton fileBtn = createDarkBlueButton("+ File Request");
         searchRight.add(sLbl);
         searchRight.add(searchField);
+        searchRight.add(viewLbl);
+        searchRight.add(assignmentFilterBox);
         searchRight.add(searchBtn);
         searchRight.add(clearBtn);
         searchRight.add(fileBtn);
@@ -170,9 +174,11 @@ public class StaffMenuFrame extends JFrame {
 
         styleActionButton(updateStatusBtn, false);
         styleActionButton(deleteBtn, false);
+        styleActionButton(claimBtn, false);
         JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         bottomActions.setBackground(Color.WHITE);
         bottomActions.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
+        bottomActions.add(claimBtn);
         bottomActions.add(updateStatusBtn);
         bottomActions.add(deleteBtn);
 
@@ -228,8 +234,10 @@ public class StaffMenuFrame extends JFrame {
         fileMenuItem.addActionListener(e -> fileRequestDialog());
         updateStatusBtn.addActionListener(e -> updateStatusDialog());
         updateMenuItem.addActionListener(e -> updateStatusDialog());
+        claimBtn.addActionListener(e -> claimOrReleaseSelected());
         deleteBtn.addActionListener(e -> deleteSelectedRequest());
         deleteMenuItem.addActionListener(e -> deleteSelectedRequest());
+        assignmentFilterBox.addActionListener(e -> refreshList(searchField.getText().trim()));
         refreshMenuItem.addActionListener(e -> { staff.viewRequests(); refreshList(searchField.getText().trim()); });
         searchBtn.addActionListener(e -> { staff.searchRequest(); refreshList(searchField.getText().trim()); });
         searchField.addActionListener(e -> { staff.searchRequest(); refreshList(searchField.getText().trim()); });
@@ -270,14 +278,44 @@ public class StaffMenuFrame extends JFrame {
         int idx = requestList.getSelectedIndex();
         boolean canUpdate = false;
         boolean hasSel = false;
+        boolean canClaim = false;
+        String claimLabel = "Claim";
         if (idx >= 0 && idx < currentRequests.size()) {
             AssistanceRequest sel = currentRequests.get(idx);
             // List is already restricted to own assigned type; double-check anyway.
             hasSel = staff.canHandle(sel);
             String st = sel.getStatus();
-            // Cannot update cancelled requests
-            canUpdate = hasSel && st != null && !"Cancelled".equalsIgnoreCase(st);
+            boolean cancelled = st != null && "Cancelled".equalsIgnoreCase(st);
+            boolean pending = st != null && "Pending".equalsIgnoreCase(st);
+            boolean mine = hasSel && staff.getStaffId().equals(sel.getAssignedStaffId());
+            String assignee = sel.getAssignedStaffId();
+            boolean unassigned = assignee == null || assignee.trim().isEmpty();
+            boolean takenByOther = hasSel && !unassigned && !mine;
+            // Rule: must claim first before updating. Only the claimer can update.
+            // Completed and Cancelled are terminal - never updatable.
+            boolean terminal = cancelled
+                    || (st != null && "Completed".equalsIgnoreCase(st));
+            canUpdate = mine && !terminal;
+            if (hasSel) {
+                if (mine) {
+                    canClaim = true;
+                    claimLabel = "Release";
+                } else if (takenByOther) {
+                    canClaim = false;
+                    claimLabel = "Taken by " + assignee.trim();
+                } else if (unassigned && pending) {
+                    // Strict: only Pending requests can be claimed.
+                    canClaim = true;
+                    claimLabel = "Claim";
+                } else {
+                    // Unassigned but not Pending (Completed/Cancelled/In Progress) -> locked.
+                    canClaim = false;
+                    claimLabel = "Claim";
+                }
+            }
         }
+        claimBtn.setText(claimLabel);
+        styleActionButton(claimBtn, canClaim);
         styleActionButton(updateStatusBtn, canUpdate);
         styleActionButton(deleteBtn, hasSel);
     }
@@ -334,10 +372,9 @@ public class StaffMenuFrame extends JFrame {
         card.add(headerRow);
         card.add(Box.createVerticalStrut(18));
 
-        JPanel grid = new JPanel(new GridLayout(2, 2, 32, 14));
+        JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
         grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
         grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
         String locationVal = req.getLocation();
@@ -348,6 +385,24 @@ public class StaffMenuFrame extends JFrame {
         grid.add(makeFieldBlock(req instanceof TransportationRequest ? "Route" : "Location",
                 locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
         grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+        String handler = req.getAssignedStaffId();
+        if (handler == null || handler.trim().isEmpty()) handler = "Unassigned";
+        else if (handler.equals(staff.getStaffId())) handler = handler + " (You)";
+        grid.add(makeFieldBlock("Handled By", handler));
+        // Submitter info looked up from users file (name + contact) so staff
+        // can see who filed the request, not just the resident ID.
+        String submitterName = null;
+        String submitterContact = null;
+        for (User u : fileManager.readUsers()) {
+            if (u instanceof Resident && req.getResidentId() != null
+                    && req.getResidentId().equals(((Resident) u).getResidentId())) {
+                submitterName = u.getFullName();
+                submitterContact = ((Resident) u).getContactNo();
+                break;
+            }
+        }
+        grid.add(makeFieldBlock("Submitted By", submitterName == null ? req.getResidentId() : submitterName));
+        grid.add(makeFieldBlock("Contact No", submitterContact == null ? "-" : submitterContact));
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
         card.add(makeDivider());
@@ -400,14 +455,19 @@ public class StaffMenuFrame extends JFrame {
         l.setFont(new Font("SansSerif", Font.PLAIN, 11));
         l.setForeground(new Color(100, 116, 139));
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel v = new JLabel(value == null || value.isEmpty() ? "-" : value);
-        v.setFont(new Font("SansSerif", Font.BOLD, 14));
+        String shown = (value == null || value.trim().isEmpty()) ? "-" : value;
+        JLabel v = new JLabel("<html><body style='width:180px'>" + escapeHtml(shown) + "</body></html>");
+        v.setFont(new Font("SansSerif", Font.BOLD, 13));
         v.setForeground(new Color(15, 23, 42));
         v.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(l);
         p.add(Box.createVerticalStrut(3));
         p.add(v);
         return p;
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private JLabel makeSectionTitle(String text) {
@@ -451,14 +511,23 @@ public class StaffMenuFrame extends JFrame {
         requestListModel.clear();
         currentRequests.clear();
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
+        String view = (String) assignmentFilterBox.getSelectedItem();
+        if (view == null) view = "All";
         for (AssistanceRequest r : requestManager.getAllRequests()) {
             if (!r.getType().equalsIgnoreCase(staff.getAssignedType())) continue;
+            if ("Unassigned".equals(view) && r.isAssigned()) continue;
+            if ("Mine".equals(view) && !staff.getStaffId().equals(r.getAssignedStaffId())) continue;
             if (!query.isEmpty()
                     && !r.getRequestId().toLowerCase().contains(query)
                     && !r.getResidentId().toLowerCase().contains(query)
                     && !r.getStatus().toLowerCase().contains(query)) continue;
             currentRequests.add(r);
-            requestListModel.addElement(r.getRequestId() + "  (" + r.getStatus() + ")");
+            String tag = "";
+            if (r.isAssigned()) {
+                tag = staff.getStaffId().equals(r.getAssignedStaffId())
+                        ? "  [Mine]" : "  [" + r.getAssignedStaffId() + " handling]";
+            }
+            requestListModel.addElement(r.getRequestId() + "  (" + r.getStatus() + ")" + tag);
         }
         detailsPanel.removeAll();
         detailsPanel.setLayout(new BorderLayout());
@@ -481,8 +550,17 @@ public class StaffMenuFrame extends JFrame {
     private void updateStatusDialog() {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
-        if ("Cancelled".equalsIgnoreCase(req.getStatus())) {
-            JOptionPane.showMessageDialog(this, "Cancelled requests cannot be updated.",
+        if (!staff.getStaffId().equals(req.getAssignedStaffId())) {
+            String owner = req.getAssignedStaffId();
+            JOptionPane.showMessageDialog(this,
+                    "Claim this request first before updating its status.\nCurrently handled by: "
+                            + (owner == null || owner.trim().isEmpty() ? "no one" : owner) + ".",
+                    "Claim Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if ("Cancelled".equalsIgnoreCase(req.getStatus())
+                || "Completed".equalsIgnoreCase(req.getStatus())) {
+            JOptionPane.showMessageDialog(this, req.getStatus() + " requests cannot be updated.",
                     "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -536,9 +614,9 @@ public class StaffMenuFrame extends JFrame {
         saveBtn.addActionListener(e -> {
             String newStatus = (String) statusBox.getSelectedItem();
             try {
-                // Type guard + history inside Staff.updateRequestStatus.
+                // Type guard + ownership + history inside Staff.updateRequestStatus.
                 staff.updateRequestStatus(req, newStatus);
-            } catch (IllegalArgumentException ex) {
+            } catch (IllegalArgumentException | IllegalStateException ex) {
                 JOptionPane.showMessageDialog(dialog, ex.getMessage(),
                         "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -603,20 +681,17 @@ public class StaffMenuFrame extends JFrame {
     }
 
     private JComponent buildTimelineRow(TimelineEvent ev, boolean last) {
-        JPanel row = new JPanel();
-        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+        JPanel row = new JPanel(new BorderLayout(10, 0));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
         TimelineMarker marker = new TimelineMarker(!last);
-        marker.setPreferredSize(new Dimension(20, 44));
-        marker.setMaximumSize(new Dimension(20, 44));
-        row.add(marker);
-        row.add(Box.createHorizontalStrut(10));
+        marker.setPreferredSize(new Dimension(20, 48));
+        row.add(marker, BorderLayout.WEST);
         JPanel text = new JPanel();
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         text.setOpaque(false);
-        text.setAlignmentY(Component.TOP_ALIGNMENT);
-        JLabel aLbl = new JLabel(ev.action == null ? "" : ev.action);
+        JLabel aLbl = new JLabel("<html><body style='width:190px'>" + escapeHtml(ev.action == null ? "" : ev.action) + "</body></html>");
         aLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
         aLbl.setForeground(DARK_BLUE);
         aLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -628,13 +703,13 @@ public class StaffMenuFrame extends JFrame {
         tLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         text.add(tLbl);
         if (ev.detail != null && !ev.detail.isEmpty()) {
-            JLabel dLbl = new JLabel(ev.detail);
+            JLabel dLbl = new JLabel("<html><body style='width:190px'>" + escapeHtml(ev.detail) + "</body></html>");
             dLbl.setFont(new Font("SansSerif", Font.PLAIN, 11));
             dLbl.setForeground(new Color(100, 116, 139));
             dLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
             text.add(dLbl);
         }
-        row.add(text);
+        row.add(text, BorderLayout.CENTER);
         return row;
     }
 
@@ -676,6 +751,41 @@ public class StaffMenuFrame extends JFrame {
                 g2.dispose();
             }
         }
+    }
+
+    /** Claims the selected request, or releases it when already claimed by self. */
+    private void claimOrReleaseSelected() {
+        AssistanceRequest req = getSelectedRequest();
+        if (req == null) return;
+        if (staff.getStaffId().equals(req.getAssignedStaffId())) {
+            try {
+                staff.releaseRequest(req);
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        "Cannot Release", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            JOptionPane.showMessageDialog(this, "Released " + req.getRequestId() + " back to the pool.");
+            refreshList(searchField.getText().trim());
+            showSelectedHistory();
+            return;
+        }
+        if (!"Pending".equalsIgnoreCase(req.getStatus())) {
+            JOptionPane.showMessageDialog(this,
+                    "Only Pending requests can be claimed (current: " + req.getStatus() + ").",
+                    "Cannot Claim", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            staff.claimRequest(req);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Cannot Claim", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        JOptionPane.showMessageDialog(this, "You are now handling " + req.getRequestId() + ".");
+        refreshList(searchField.getText().trim());
+        showSelectedHistory();
     }
 
     /** Deletes the selected own-type request after confirmation; history kept. */

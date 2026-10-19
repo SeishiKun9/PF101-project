@@ -4,7 +4,7 @@ import ui.StaffMenuFrame;
 
 /** FoodStaff: handles Food-type assistance requests. Overrides showMenu(). */
 public class FoodStaff extends Staff {
-    private static final long serialVersionUID = 1L;
+
     public FoodStaff(String name, String password, String staffId) {
         super(name, password, "FoodStaff", staffId, "Food");
     }
@@ -14,8 +14,11 @@ public class FoodStaff extends Staff {
         new StaffMenuFrame(this).setVisible(true);
     }
 
-    @Override
+       @Override
     public String toFileLine() {
-        return String.join("|", "FoodStaff", getFullName(), getPassword(), getStaffId(), getAssignedType());
+        return String.join("|", "FoodStaff", AssistanceRequest.encodeField(getFullName()),
+                AssistanceRequest.encodeField(getPassword()), AssistanceRequest.encodeField(getStaffId()),
+                AssistanceRequest.encodeField(getAssignedType()),
+                AssistanceRequest.encodeField(getAddress()), AssistanceRequest.encodeField(getContactNo()));
     }
 }

@@ -21,7 +21,7 @@ import java.nio.file.StandardOpenOption;
  * Styled like ResidentMenuFrame (dark blue, split panels).
  */
 public class AdminMenuFrame extends JFrame {
-    private static final long serialVersionUID = 1L;
+
     private final Admin admin;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);
@@ -38,6 +38,8 @@ public class AdminMenuFrame extends JFrame {
     private final JTextField userSearchField = new JTextField(14);
     private List<User> currentUsers = new ArrayList<>();
     private final JButton manageUserBtn = new JButton("Manage User");
+    private final JComboBox<String> userRoleFilterBox = new JComboBox<>(new String[]{
+            "All Roles", "Resident", "Admin", "MedicalStaff", "FoodStaff", "TransportationStaff"});
 
     private final DefaultListModel<String> requestListModel = new DefaultListModel<>();
     private final JList<String> requestList = new JList<>(requestListModel);
@@ -214,8 +216,10 @@ public class AdminMenuFrame extends JFrame {
                 BorderFactory.createEmptyBorder(4, 8, 4, 8)));
         JButton searchUsersBtn = createDarkBlueButton("Search");
         JButton clearUserSearchBtn = createDarkBlueButton("Clear");
+        userRoleFilterBox.setPreferredSize(new Dimension(150, 30));
         userSearch.add(uLbl);
         userSearch.add(userSearchField);
+        userSearch.add(userRoleFilterBox);
         userSearch.add(searchUsersBtn);
         userSearch.add(clearUserSearchBtn);
         userTop.add(userLeftActions, BorderLayout.WEST);
@@ -347,7 +351,8 @@ public class AdminMenuFrame extends JFrame {
         myHistoryMenuItem.addActionListener(e -> viewOwnAdminHistory());
         searchUsersBtn.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
         userSearchField.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
-        clearUserSearchBtn.addActionListener(e -> { userSearchField.setText(""); refreshUserList(""); });
+        userRoleFilterBox.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
+        clearUserSearchBtn.addActionListener(e -> { userSearchField.setText(""); userRoleFilterBox.setSelectedIndex(0); refreshUserList(""); });
 
         searchReqBtn.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
         requestSearchField.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
@@ -396,7 +401,10 @@ public class AdminMenuFrame extends JFrame {
         userListModel.clear();
         currentUsers.clear();
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
+        String roleFilter = (String) userRoleFilterBox.getSelectedItem();
+        if (roleFilter == null) roleFilter = "All Roles";
         for (User u : fileManager.readUsers()) {
+            if (!"All Roles".equals(roleFilter) && !roleFilter.equalsIgnoreCase(u.getRole())) continue;
             String id = getUserId(u);
             String searchable = (u.getRole() + " " + u.getFullName() + " " + id).toLowerCase();
             if (!query.isEmpty() && !searchable.contains(query)) continue;
@@ -460,11 +468,48 @@ public class AdminMenuFrame extends JFrame {
             grid.add(makeFieldBlock("Access", "Full System"));
         }
         card.add(grid);
+        card.add(Box.createVerticalStrut(16));
+        card.add(makeDivider());
+        card.add(Box.createVerticalStrut(12));
+        card.add(makeSectionTitle("Request Logistics"));
+        card.add(Box.createVerticalStrut(8));
+        card.add(buildUserStatsPanel(u));
 
         userDetailsPanel.setLayout(new BorderLayout());
         userDetailsPanel.add(card, BorderLayout.NORTH);
         userDetailsPanel.revalidate();
         userDetailsPanel.repaint();
+    }
+
+    /** Logistics summary: per-resident submission counts, per-staff handled counts. */
+    private JPanel buildUserStatsPanel(User u) {
+        JPanel stats = new JPanel(new GridLayout(0, 2, 32, 10));
+        stats.setOpaque(false);
+        stats.setAlignmentX(Component.LEFT_ALIGNMENT);
+        stats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        String uid = getUserId(u);
+        if (u instanceof Resident) {
+            int total = 0;
+            for (AssistanceRequest r : requestManager.getAllRequests()) {
+                if (!uid.equals(r.getResidentId())) continue;
+                total++;
+            }
+            stats.add(makeFieldBlock("No. of Requests Submitted", String.valueOf(total)));
+        } else if (u instanceof Staff) {
+            Staff s = (Staff) u;
+            int handled = 0;
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (StaffRequestHistory h : fileManager.readStaffRequestHistory()) {
+                if (s.getStaffId().equals(h.getStaffId()) && seen.add(h.getRequestId())) handled++;
+            }
+            stats.add(makeFieldBlock("No. of Requests Handled", String.valueOf(handled)));
+        } else {
+            int totalUsers = fileManager.readUsers().size();
+            int totalRequests = requestManager.getAllRequests().size();
+            stats.add(makeFieldBlock("Total Users", String.valueOf(totalUsers)));
+            stats.add(makeFieldBlock("Total Requests", String.valueOf(totalRequests)));
+        }
+        return stats;
     }
 
     private void refreshRequestList(String searchTerm) {
@@ -478,9 +523,12 @@ public class AdminMenuFrame extends JFrame {
                     && !r.getRequestId().toLowerCase().contains(query)
                     && !r.getResidentId().toLowerCase().contains(query)
                     && !r.getStatus().toLowerCase().contains(query)
-                    && !r.getType().toLowerCase().contains(query)) continue;
+                    && !r.getType().toLowerCase().contains(query)
+                    && !(r.getAssignedStaffId() != null && r.getAssignedStaffId().toLowerCase().contains(query))) continue;
             currentRequests.add(r);
-            requestListModel.addElement(r.getRequestId() + "  (" + r.getStatus() + ")");
+            String tag = (r.getAssignedStaffId() == null || r.getAssignedStaffId().trim().isEmpty())
+                    ? "" : "  [" + r.getAssignedStaffId() + "]";
+            requestListModel.addElement(r.getRequestId() + "  (" + r.getStatus() + ")" + tag);
         }
         ((CardLayout) requestListCards.getLayout())
                 .show(requestListCards, currentRequests.isEmpty() ? "empty" : "list");
@@ -711,10 +759,9 @@ public class AdminMenuFrame extends JFrame {
         card.add(headerRow);
         card.add(Box.createVerticalStrut(18));
 
-        JPanel grid = new JPanel(new GridLayout(2, 2, 32, 14));
+        JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
         grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
         grid.add(makeFieldBlock("Type", req.getType()));
         String locationVal = req.getLocation();
@@ -725,6 +772,18 @@ public class AdminMenuFrame extends JFrame {
         grid.add(makeFieldBlock(req instanceof TransportationRequest ? "Route" : "Location",
                 locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
         grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+        String handler = req.getAssignedStaffId();
+        if (handler == null || handler.trim().isEmpty()) handler = "Unassigned";
+        grid.add(makeFieldBlock("Claimed By (Staff ID)", handler));
+        String submitter = null;
+        for (User u : fileManager.readUsers()) {
+            if (u instanceof Resident && req.getResidentId() != null
+                    && req.getResidentId().equals(((Resident) u).getResidentId())) {
+                submitter = u.getFullName();
+                break;
+            }
+        }
+        grid.add(makeFieldBlock("Submitted By", submitter == null ? req.getResidentId() : submitter));
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
         card.add(makeDivider());
@@ -777,14 +836,19 @@ public class AdminMenuFrame extends JFrame {
         l.setFont(new Font("SansSerif", Font.PLAIN, 11));
         l.setForeground(new Color(100, 116, 139));
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel v = new JLabel(value == null || value.isEmpty() ? "-" : value);
-        v.setFont(new Font("SansSerif", Font.BOLD, 14));
+        String shown = (value == null || value.trim().isEmpty()) ? "-" : value;
+        JLabel v = new JLabel("<html><body style='width:180px'>" + escapeHtml(shown) + "</body></html>");
+        v.setFont(new Font("SansSerif", Font.BOLD, 13));
         v.setForeground(new Color(15, 23, 42));
         v.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(l);
         p.add(Box.createVerticalStrut(3));
         p.add(v);
         return p;
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private JLabel makeSectionTitle(String text) {
@@ -875,27 +939,27 @@ public class AdminMenuFrame extends JFrame {
         return row;
     }
 
-    private void createUserDialog() {
+        private void createUserDialog() {
         String[] roles = {"Resident", "Admin", "MedicalStaff", "FoodStaff", "TransportationStaff"};
         JComboBox<String> roleBox = new JComboBox<>(roles);
         JTextField nameField = new JTextField();
         JTextField passField = new JTextField();
-        JTextField extra1 = new JTextField();
-        JTextField extra2 = new JTextField();
+        JTextField addressField = new JTextField();
+        JTextField contactField = new JTextField();
         styleFormField(nameField);
         styleFormField(passField);
-        styleFormField(extra1);
-        styleFormField(extra2);
+        styleFormField(addressField);
+        styleFormField(contactField);
 
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(24, 28, 16, 28));
         panel.add(formRow("Role", roleBox));
-        panel.add(formRow("Name", nameField));
-        panel.add(formRow("Password", passField));
-        panel.add(formRow("Address (Resident)", extra1));
-        panel.add(formRow("Contact No (Resident)", extra2));
+        panel.add(formRow("Name *", nameField));
+        panel.add(formRow("Password *", passField));
+        panel.add(formRow("Address *", addressField));
+        panel.add(formRow("Contact No *", contactField));
 
         JDialog dialog = new JDialog(this, "Create New User", true);
         dialog.setLayout(new BorderLayout());
@@ -913,50 +977,59 @@ public class AdminMenuFrame extends JFrame {
             String role = (String) roleBox.getSelectedItem();
             String name = nameField.getText().trim();
             String pass = passField.getText().trim();
-            if (name.isEmpty() || pass.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Name and password are required.");
+            String address = addressField.getText().trim();
+            String contact = contactField.getText().trim();
+
+            // Every role needs all four fields before the user can be created.
+            if (name.isEmpty() || pass.isEmpty() || address.isEmpty() || contact.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Name, password, address, and contact number are all required.",
+                        "Missing Information", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            User newUser;
-            switch (role) {
-                case "Resident":
-                    String contact = extra2.getText().trim();
-                    if (!contact.matches("\\+?[0-9]+")) {
-                        JOptionPane.showMessageDialog(dialog, "Contact number must be numeric.",
-                                "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                        return;
-                    }
-                    newUser = new Resident(name, pass, fileManager.nextResidentId(), extra1.getText().trim(), contact);
-                    break;
-                case "Admin":
-                    newUser = new Admin(name, pass, "ADM" + System.currentTimeMillis());
-                    break;
-                case "MedicalStaff":
-                    newUser = new MedicalStaff(name, pass, "STF" + System.currentTimeMillis());
-                    break;
-                case "FoodStaff":
-                    newUser = new FoodStaff(name, pass, "STF" + System.currentTimeMillis());
-                    break;
-                default:
-                    newUser = new TransportationStaff(name, pass, "STF" + System.currentTimeMillis());
-                    break;
+            if (!contact.matches("\\+?[0-9]+")) {
+                JOptionPane.showMessageDialog(dialog, "Contact number must be numeric.",
+                        "Invalid Input", JOptionPane.WARNING_MESSAGE);
+                return;
             }
+
+            User newUser = switch (role) {
+                case "Resident" -> new Resident(name, pass, fileManager.nextResidentId(), address, contact);
+                case "Admin" -> new Admin(name, pass, fileManager.nextAdminId());
+                case "MedicalStaff" -> new MedicalStaff(name, pass, fileManager.nextStaffId());
+                case "FoodStaff" -> new FoodStaff(name, pass, fileManager.nextStaffId());
+                default -> new TransportationStaff(name, pass, fileManager.nextStaffId());
+            };
+            newUser.setAddress(address);
+            newUser.setContactNo(contact);
             if (newUser instanceof Staff) {
                 ((Staff) newUser).setAssignedType(getAssignedTypeForRole(role));
             }
-            admin.createUser(newUser);
+
+            String err = newUser.validateContactDetails();
+            if (err != null) {
+                JOptionPane.showMessageDialog(dialog, err, "Invalid Input", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                admin.createUser(newUser);
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Invalid Input",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             logAdminAction("Created user " + getUserId(newUser) + " (" + role + ")");
             refreshUserList();
             JOptionPane.showMessageDialog(dialog, "User created.");
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
-        dialog.setSize(520, 420);
-        dialog.setMinimumSize(new Dimension(480, 380));
+        dialog.setSize(520, 440);
+        dialog.setMinimumSize(new Dimension(480, 400));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
-
+    
     private void editSelectedUser() {
         User u = getSelectedUser();
         if (u == null) return;
@@ -1007,6 +1080,11 @@ public class AdminMenuFrame extends JFrame {
             dialogPackSafe();
         };
 
+        // Re-validate Resident fields whenever the dialog is re-opened/fields rebuilt
+        // (e.g., role switching for Admin/Staff already handled by rebuildFields,
+        // but a direct re-open should also re-check the stored Resident fields).
+        rebuildFields.run();
+
         final JDialog[] dialogRef = new JDialog[1];
         // Residents may not change role, so the selector is locked for them.
         roleBox.setEnabled(!(u instanceof Resident));
@@ -1020,8 +1098,6 @@ public class AdminMenuFrame extends JFrame {
             }
             rebuildFields.run();
         });
-        rebuildFields.run();
-
         JDialog dialog = new JDialog(this, "Manage User", true);
         dialogRef[0] = dialog;
         dialog.setLayout(new BorderLayout());
@@ -1084,14 +1160,20 @@ public class AdminMenuFrame extends JFrame {
                 }
             }
             User updatedUser;
+            String newAddress = addressField.getText().trim();
+            String newContact = contactField.getText().trim();
             if ("Resident".equals(newRole)) {
-                String contactNo = contactField.getText().trim();
-                if (!contactNo.matches("\\+?[0-9]+")) {
+                if (newAddress.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialog, "Resident address is required.",
+                            "Invalid Input", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                if (!newContact.matches("\\+?[0-9]+")) {
                     JOptionPane.showMessageDialog(dialog, "Contact number must be numeric.",
                             "Invalid Input", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-                updatedUser = new Resident(newName, newPassword, newUserId, addressField.getText().trim(), contactNo);
+                updatedUser = new Resident(newName, newPassword, newUserId, newAddress, newContact);
             } else if ("Admin".equals(newRole)) {
                 updatedUser = new Admin(newName, newPassword, newUserId);
             } else if ("MedicalStaff".equals(newRole)) {
@@ -1103,6 +1185,14 @@ public class AdminMenuFrame extends JFrame {
             }
             if (updatedUser instanceof Staff) {
                 ((Staff) updatedUser).setAssignedType(getAssignedTypeForRole(newRole));
+            }
+            String err = null;
+            if (updatedUser instanceof Resident r) {
+                err = r.validate();
+            }
+            if (err != null) {
+                JOptionPane.showMessageDialog(dialog, err, "Invalid Input", JOptionPane.WARNING_MESSAGE);
+                return;
             }
             if (u instanceof Resident && !oldUserId.equals(newUserId)) {
                 fileManager.updateResidentIdInRequests(oldUserId, newUserId);
@@ -1154,7 +1244,8 @@ public class AdminMenuFrame extends JFrame {
 
     private String createUserIdForRole(String role) {
         if ("Resident".equals(role)) return fileManager.nextResidentId();
-        return getUserIdPrefix(role) + System.currentTimeMillis();
+        if ("Admin".equals(role)) return fileManager.nextAdminId();
+        return fileManager.nextStaffId();
     }
 
     private String getUserId(User user) {
@@ -1480,7 +1571,6 @@ public class AdminMenuFrame extends JFrame {
 
     /** Dot marker with a connecting line down to the next timeline entry. */
     private static class TimelineMarker extends JComponent {
-        private static final long serialVersionUID = 1L;
         private final boolean drawLine;
 
         TimelineMarker(boolean drawLine) {

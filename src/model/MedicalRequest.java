@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Medical assistance request containing one or more medical items. */
 public class MedicalRequest extends AssistanceRequest {
 
     private final List<MedicalItem> medicalItems;
@@ -22,9 +21,8 @@ public class MedicalRequest extends AssistanceRequest {
     }
 
     public void setMedicalItems(List<MedicalItem> items) {
-        List<MedicalItem> copy = new ArrayList<>(items);
-        medicalItems.clear();
-        medicalItems.addAll(copy);
+        this.medicalItems.clear();
+        this.medicalItems.addAll(items);
     }
 
     @Override
@@ -42,13 +40,17 @@ public class MedicalRequest extends AssistanceRequest {
     @Override
     public String toFileLine() {
         StringBuilder line = new StringBuilder(commonFieldsForFile("MEDICAL"));
-        line.append('|').append(medicalItems.size());
+        
+        line.append("|").append(medicalItems.size());
+        
         for (MedicalItem item : medicalItems) {
-            line.append('|').append(encodeField(item.getName()))
-                    .append('|').append(item.getQuantity())
-                    .append('|').append(encodeField(item.getUnit()));
+            line.append("|").append(encodeField(item.getName()))
+                .append("|").append(item.getQuantity())
+                .append("|").append(encodeField(item.getUnit()));
         }
-        line.append('|').append(encodeAssigneeField());
+        
+        line.append("|").append(encodeAssigneeField());
+        
         return line.toString();
     }
 }

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ResidentMenuFrame extends JFrame {
+
     private final Resident resident;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);
@@ -67,7 +68,7 @@ public class ResidentMenuFrame extends JFrame {
         menuBar.add(residentMenu);
         setJMenuBar(menuBar);
 
-        // Header - dark blue like login
+
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(DARK_BLUE);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 28, 16, 28));
@@ -102,7 +103,7 @@ public class ResidentMenuFrame extends JFrame {
 
         add(headerPanel, BorderLayout.NORTH);
 
-        // Toolbar: only Submit Request + Search
+
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.setBackground(new Color(245, 247, 250));
         toolbar.setBorder(BorderFactory.createEmptyBorder(12, 20, 8, 20));
@@ -132,14 +133,14 @@ public class ResidentMenuFrame extends JFrame {
         toolbar.add(actionsLeft, BorderLayout.WEST);
         toolbar.add(searchRight, BorderLayout.EAST);
 
-        // Split pane
+    
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         splitPane.setDividerLocation(280);
         splitPane.setDividerSize(4);
         splitPane.setBorder(null);
         splitPane.setContinuousLayout(true);
 
-        // LEFT: request list
+
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.setBackground(Color.WHITE);
         leftPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(203, 213, 225)));
@@ -166,7 +167,7 @@ public class ResidentMenuFrame extends JFrame {
         leftPanel.add(listTitle, BorderLayout.NORTH);
         leftPanel.add(listScroll, BorderLayout.CENTER);
 
-        // RIGHT: details + bottom action buttons
+
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(Color.WHITE);
 
@@ -187,7 +188,7 @@ public class ResidentMenuFrame extends JFrame {
         detailsScroll.setBorder(null);
         detailsScroll.getViewport().setBackground(Color.WHITE);
 
-        // Bottom right: Update or cancel own requests, only while they are Pending.
+
         styleActionButton(updateReqBtn, false);
         styleActionButton(cancelReqBtn, false);
 
@@ -311,7 +312,6 @@ public class ResidentMenuFrame extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
 
-        // Header: Request ID + status badge
         JPanel headerRow = new JPanel(new BorderLayout());
         headerRow.setOpaque(false);
         headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -333,7 +333,6 @@ public class ResidentMenuFrame extends JFrame {
         card.add(headerRow);
         card.add(Box.createVerticalStrut(18));
 
-        // Two-column grid: Type | Date Needed, Location | Date Submitted
         JPanel grid = new JPanel(new GridLayout(2, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -353,11 +352,10 @@ public class ResidentMenuFrame extends JFrame {
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
 
-        // Divider
+      
         card.add(makeDivider());
         card.add(Box.createVerticalStrut(12));
 
-        // Requested items / transport details
         if (req instanceof MedicalRequest) {
             MedicalRequest medical = (MedicalRequest) req;
             card.add(makeSectionTitle("Requested Items"));
@@ -386,7 +384,7 @@ public class ResidentMenuFrame extends JFrame {
         card.add(Box.createVerticalStrut(12));
 
         // Reason / additional details
-        card.add(makeSectionTitle("Reason for Request"));
+        card.add(makeSectionTitle("Details of Request"));
         card.add(Box.createVerticalStrut(6));
         String reason = req.getAdditionalDetails();
         JLabel reasonLbl = new JLabel(reason == null || reason.isEmpty() ? "(None)" : reason);

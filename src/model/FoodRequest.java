@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Food assistance request containing one or more food items. */
 public class FoodRequest extends AssistanceRequest {
     private final List<FoodItem> foodItems;
 
@@ -21,9 +20,8 @@ public class FoodRequest extends AssistanceRequest {
     }
 
     public void setFoodItems(List<FoodItem> items) {
-        List<FoodItem> copy = new ArrayList<>(items);
-        foodItems.clear();
-        foodItems.addAll(copy);
+        this.foodItems.clear();
+        this.foodItems.addAll(items);
     }
 
     @Override
@@ -41,13 +39,17 @@ public class FoodRequest extends AssistanceRequest {
     @Override
     public String toFileLine() {
         StringBuilder line = new StringBuilder(commonFieldsForFile("FOOD"));
-        line.append('|').append(foodItems.size());
+    
+        line.append("|").append(foodItems.size());
+    
         for (FoodItem item : foodItems) {
-            line.append('|').append(encodeField(item.getName()))
-                    .append('|').append(item.getQuantity())
-                    .append('|').append(encodeField(item.getUnit()));
+            line.append("|").append(encodeField(item.getName()))
+                .append("|").append(item.getQuantity())
+                .append("|").append(encodeField(item.getUnit()));
         }
-        line.append('|').append(encodeAssigneeField());
+        
+        line.append("|").append(encodeAssigneeField());
+        
         return line.toString();
     }
 }

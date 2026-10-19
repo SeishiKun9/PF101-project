@@ -14,20 +14,13 @@ public class Admin extends User {
         this.adminId = adminId;
     }
 
-    public String getAdminId() {
-        return adminId;
-    }
-
-    public void setAdminId(String adminId) {
-        this.adminId = adminId;
-    }
+    public String getAdminId() { return adminId; }
+    public void setAdminId(String adminId) { this.adminId = adminId; }
 
     @Override
-    public String getUserId() {
-        return adminId;
-    }
+    public String getUserId() { return adminId; }
 
-    // Create a new user
+
     public void createUser(User user) {
         if (user == null) {
             throw new IllegalArgumentException("User is required.");
@@ -49,24 +42,26 @@ public class Admin extends User {
         fm.saveUser(user);
     }
 
-    // Delete a user
     public void deleteUser(String userId) {
         FileManager fm = new FileManager();
         List<User> users = fm.readUsers();
-
         users.removeIf(user -> user.getUserId().equals(userId));
-
         fm.saveAllUsers(users);
     }
 
-    // File a request for a resident
-    public void fileRequestFor(String residentId, AssistanceRequest request) {
-        if (residentId == null || residentId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Select a resident.");
-        }
+    public void manageUser(String userId) {
+        System.out.println(getFullName() + " is managing user " + userId + ".");
+    }
 
-        if (request == null || !residentId.equals(request.getResidentId())) {
-            throw new IllegalArgumentException("Request does not match the resident.");
+    public void viewUserHistory() {
+        System.out.println(getFullName() + " is viewing a user's history.");
+    }
+
+
+    public void fileRequestFor(String residentId, AssistanceRequest request) {
+
+        if (residentId == null || residentId.trim().isEmpty() || request == null || !residentId.equals(request.getResidentId())) {
+            throw new IllegalArgumentException("A valid resident and matching request are required.");
         }
 
         RequestManager rm = new RequestManager(new FileManager());
@@ -78,27 +73,10 @@ public class Admin extends User {
         rm.addRequest(request);
     }
 
-    public void manageUser(String userId) {
-        System.out.println(getFullName() + " is managing user " + userId + ".");
-    }
-
     public void viewAllRequest() {
         System.out.println(getFullName() + " is viewing all requests.");
     }
 
-    public void viewUserHistory() {
-        System.out.println(getFullName() + " is viewing a user's history.");
-    }
-
-    /** A request is open until it is Completed or Cancelled. */
-    public static boolean isOpen(AssistanceRequest request) {
-        String status = request.getStatus();
-        return status != null
-                && !"Completed".equalsIgnoreCase(status)
-                && !"Cancelled".equalsIgnoreCase(status);
-    }
-
-    // Update a request's status
     public void updateRequestStatus(AssistanceRequest request, String status) {
         if (request == null) {
             throw new IllegalArgumentException("Request is required.");
@@ -111,13 +89,9 @@ public class Admin extends User {
         }
 
         request.updateStatus(status);
-        new RequestManager(new FileManager()).updateRequest(request);
+        saveRequest(request); 
     }
 
-    /**
-     * Assigns a staff member to manage a Pending request. Pass null to unassign.
-     * Only staff whose type matches the request can be assigned.
-     */
     public void assignStaff(AssistanceRequest request, Staff staff) {
         if (request == null) {
             throw new IllegalArgumentException("Request is required.");
@@ -126,21 +100,27 @@ public class Admin extends User {
             throw new IllegalArgumentException("Only Pending requests can be assigned or reassigned.");
         }
         if (staff != null && !staff.canHandle(request)) {
-            throw new IllegalArgumentException(
-                    "This staff member does not handle " + request.getType() + " requests.");
+            throw new IllegalArgumentException("This staff member does not handle " + request.getType() + " requests.");
         }
 
         request.setAssignedStaffId(staff == null ? null : staff.getStaffId());
-        new RequestManager(new FileManager()).updateRequest(request);
+        saveRequest(request); 
     }
 
-    // Delete a request
     public void deleteRequest(AssistanceRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Request is required.");
         }
-
         new FileManager().deleteRequestFromFile(request.getRequestId());
+    }
+
+    public static boolean isOpen(AssistanceRequest request) {
+        String status = request.getStatus();
+        return status != null && !"Completed".equalsIgnoreCase(status) && !"Cancelled".equalsIgnoreCase(status);
+    }
+
+    private void saveRequest(AssistanceRequest request) {
+        new RequestManager(new FileManager()).updateRequest(request);
     }
 
     @Override

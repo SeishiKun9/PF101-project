@@ -2,3 +2,5 @@ RSD3000|REQ4003|Food|Updated|[Food] REQ4003 - Pending - Items: rice x2 rice, - D
 RSD3000|REQ4003|Food|Updated|[Food] REQ4003 - Pending - [rice %7C 2 %7C kg] - Location: gh - Needed: 2026-09-30T19:37:00 - Delivered to|2026-10-06T23:46:23
 RSD3001|REQ4006|Medical|Filed by admin|[Medical] REQ4006 - Pending - [z %7C 1 %7C kg] - Location: a - Needed: 2026-10-18T09:00:00 - 1|2026-10-17T23:08:24
 RSD3000|REQ4003|Food|Request updated|[Food] REQ4003 - Pending - [rice %7C 2 %7C kg] - Location: gh - Needed: 2026-09-30T19:37:00 - Delivered to|2026-10-17T23:16:51
+RSD3000|REQ4005|Medical|Cancelled|[Medical] REQ4005 - Cancelled - [uhi %7C 8 %7C tablet] - Location: hbj - Needed: 2026-10-08T09:00:00 - hjbj|2026-10-19T20:32:59
+RSD3003|REQ4007|Medical|Filed by staff|[Medical] REQ4007 - Pending - [Saridon %7C 2 %7C pcs] - Location: Manga - Needed: 2026-10-20T09:00:00 - As soon as possible|2026-10-19T20:46:22

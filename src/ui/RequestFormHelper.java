@@ -8,11 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 
-/**
- * Shared request-filing form used by the Admin (file on behalf of resident).
- * Mirrors the Resident submit form: item rows and the same validation,
- * but the caller supplies the resident ID.
- */
+
 public final class RequestFormHelper {
 
     public static final DateTimeFormatter WHEN_FMT =
@@ -21,7 +17,6 @@ public final class RequestFormHelper {
     private RequestFormHelper() {
     }
 
-    /** One item row: name + quantity + unit. */
     public static final class ItemRow {
         public final JTextField nameField = new JTextField();
         public final JTextField quantityField = new JTextField();
@@ -32,7 +27,6 @@ public final class RequestFormHelper {
         }
     }
 
-    /** All editable fields of the form. */
     public static final class Fields {
         public final List<ItemRow> itemRows = new ArrayList<>();
         public final JTextField locationField = new JTextField();
@@ -97,7 +91,7 @@ public final class RequestFormHelper {
         return LocalDateTime.parse(value, WHEN_FMT);
     }
 
-    /** Builds the request object for the given resident. */
+
     public static AssistanceRequest createRequest(String type, String requestId, String residentId,
                                                   Fields fields, String status,
                                                   LocalDateTime dateRequested) {
@@ -117,7 +111,7 @@ public final class RequestFormHelper {
                 details, status, dateRequested);
     }
 
-    /** Same required-field validation as the resident form. False + popup on failure. */
+
     public static boolean hasRequiredFields(Component parent, String type, Fields fields) {
         if (!"Transportation".equals(type) && fields.locationField.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(parent, "Please enter the assistance location.",

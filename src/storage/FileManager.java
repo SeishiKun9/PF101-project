@@ -7,7 +7,6 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
-
 import static model.AssistanceRequest.decodeField;
 
 public class FileManager {
@@ -86,7 +85,6 @@ public class FileManager {
         return records;
     }
 
-    /** Returns prefix + (highest numeric ID + 1), or minimum + 1 when there are no matches. */
     private static String generateNextId(String prefix, long minimum, List<String> ids) {
         long highest = minimum;
         for (String id : ids) {
@@ -123,8 +121,7 @@ public class FileManager {
                 case "TransportationStaff":
                     return withContact(new TransportationStaff(name, pass, decodeField(f[3])), f, 5);
                 case "Staff":
-                    return withContact(new Staff(name, pass, "Staff",
-                            decodeField(f[3]), decodeField(f[4])), f, 5);
+                    return withContact(new Staff(name, pass, "Staff", decodeField(f[3]), decodeField(f[4])), f, 5);
                 default:
                     return null;
             }
@@ -149,29 +146,19 @@ public class FileManager {
         writeLines(USERS, users.stream().map(User::toFileLine).toList());
     }
 
-    public String nextResidentId() {
+    // --- SIMPLIFIED ID GENERATORS ---
+
+    private String generateNextUserId(String prefix, long minimum, Class<? extends User> roleClass) {
         List<String> ids = readUsers().stream()
-                .filter(u -> u instanceof Resident)
-                .map(u -> ((Resident) u).getResidentId())
+                .filter(roleClass::isInstance)
+                .map(User::getUserId)
                 .toList();
-        return generateNextId("RSD", 3000, ids);
+        return generateNextId(prefix, minimum, ids);
     }
 
-    public String nextStaffId() {
-        List<String> ids = readUsers().stream()
-                .filter(u -> u instanceof Staff)
-                .map(u -> ((Staff) u).getStaffId())
-                .toList();
-        return generateNextId("STF", 2000, ids);
-    }
-
-    public String nextAdminId() {
-        List<String> ids = readUsers().stream()
-                .filter(u -> u instanceof Admin)
-                .map(u -> ((Admin) u).getAdminId())
-                .toList();
-        return generateNextId("ADM", 1000, ids);
-    }
+    public String nextResidentId() { return generateNextUserId("RSD", 3000, Resident.class); }
+    public String nextStaffId()    { return generateNextUserId("STF", 2000, Staff.class); }
+    public String nextAdminId()    { return generateNextUserId("ADM", 1000, Admin.class); }
 
     // ------------------------------------------------------------ REQUESTS
 
@@ -226,7 +213,6 @@ public class FileManager {
             return req;
         }
 
-        // Food and medical lines: count, then (name, quantity, unit) per item, then optional assignee.
         int count = Integer.parseInt(f[10]);
         int itemsEnd = ITEM_START + count * 3;
         if (count < 0 || (f.length != itemsEnd && f.length != itemsEnd + 1)) {
@@ -268,7 +254,6 @@ public class FileManager {
         }
     }
 
-    /** Creates one item in the given line. Used for both food and medical items. */
     private interface ItemFactory<T> {
         T create(String name, int quantity, String unit);
     }
@@ -282,13 +267,11 @@ public class FileManager {
         return items;
     }
 
-    private static <T> List<T> legacyItems(String name, String quantity, List<String> units,
-                                           ItemFactory<T> factory) {
+    private static <T> List<T> legacyItems(String name, String quantity, List<String> units, ItemFactory<T> factory) {
         String[] parsed = parseLegacyQuantity(quantity, units);
         return List.of(factory.create(name, Integer.parseInt(parsed[0]), parsed[1]));
     }
 
-    /** Splits old quantities like "2 kg" into {"2", "kg"}. Falls back to {"1", "pcs"}. */
     private static String[] parseLegacyQuantity(String quantity, List<String> units) {
         String[] parts = quantity.trim().split("\\s+", 2);
         try {
@@ -302,9 +285,8 @@ public class FileManager {
         return new String[]{"1", "pcs"};
     }
 
-    /** Assignee at index i, or "" when the line predates assignment. */
-    private static String extractAssignee(String[] f, int i) {
-        return i < f.length ? AssistanceRequest.decodeAssigneeField(f[i]) : "";
+       private static String extractAssignee(String[] f, int i) {
+        return i < f.length ? decodeField(f[i]).trim() : "";
     }
 
     public void saveRequest(AssistanceRequest request) {
@@ -313,7 +295,6 @@ public class FileManager {
         }
     }
 
-    /** Replaces the saved request that has the same ID. */
     public void updateRequestFile(AssistanceRequest updated) {
         List<AssistanceRequest> all = readRequests();
         for (int i = 0; i < all.size(); i++) {
@@ -336,7 +317,6 @@ public class FileManager {
         writeLines(REQUESTS, all.stream().map(AssistanceRequest::toFileLine).toList());
     }
 
-    /** Keeps a resident's requests linked when their ID is edited. */
     public void updateResidentIdInRequests(String oldResidentId, String newResidentId) {
         List<AssistanceRequest> all = readRequests();
         for (AssistanceRequest request : all) {
@@ -363,7 +343,8 @@ public class FileManager {
     private void updateResidentIdInHistory(String oldResidentId, String newResidentId) {
         List<String> lines = new ArrayList<>();
         for (ResidentRequestHistory e : readResidentRequestHistory()) {
-            String id = e.getResidentId().equals(oldResidentId) ? newResidentId : e.getResidentId();
+            // Bug fix: Put oldResidentId on the left to prevent NullPointerException
+            String id = oldResidentId.equals(e.getResidentId()) ? newResidentId : e.getResidentId();
             lines.add(new ResidentRequestHistory(id, e.getRequestId(), e.getRequestType(),
                     e.getAction(), e.getRequestSummary(), e.getUpdatedAt()).toFileLine());
         }
@@ -378,7 +359,6 @@ public class FileManager {
         appendLine(STAFF_HISTORY, history.toFileLine());
     }
 
-        /** Records an admin action on a request (assignment or status change) so it shows in the request timeline. */
     public void recordAdminRequestAction(String adminId, AssistanceRequest request, String action) {
         StaffRequestHistory history = new StaffRequestHistory(adminId, request.getRequestId(),
                 request.getResidentId(), request.getType(), action, LocalDateTime.now());

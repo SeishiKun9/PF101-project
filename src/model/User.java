@@ -30,7 +30,6 @@ public abstract class User {
         this.contactNo = contactNo == null ? "" : contactNo.trim();
     }
 
-    /** Returns an error message if address or contact is missing or invalid, otherwise null. */
     public String validateContactDetails() {
         if (address == null || address.trim().isEmpty()) {
             return "Address is required.";

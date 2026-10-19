@@ -1645,7 +1645,6 @@ public class AdminMenuFrame extends JFrame {
         return l;
     }
 
-    /** Dot marker with a connecting line down to the next timeline entry. */
     private static class TimelineMarker extends JComponent {
         private final boolean drawLine;
 
@@ -1675,7 +1674,6 @@ public class AdminMenuFrame extends JFrame {
     }
 
     private Path adminHistoryPath() {
-        // Single persistent data folder at project root (see FileManager.resolveDataDir()).
         return Paths.get(FileManager.resolveDataDir(), "admin_history.txt");
     }
 
@@ -1723,11 +1721,6 @@ public class AdminMenuFrame extends JFrame {
         table.setFillsViewportHeight(true);
     }
 
-    /**
-     * Files a Food / Medical / Transportation request on behalf of a resident
-     * (walk-in or phone-in). Resident picker decides whose ID goes on the record;
-     * fields + validation mirror the resident submit form via RequestFormHelper.
-     */
     private void fileRequestDialog() {
         List<Resident> residents = new ArrayList<>();
         for (User u : fileManager.readUsers()) {
@@ -1745,7 +1738,6 @@ public class AdminMenuFrame extends JFrame {
         }
         JComboBox<String> typeBox = new JComboBox<>(new String[]{"Food", "Medical", "Transport"});
         RequestFormHelper.Fields fields = new RequestFormHelper.Fields();
-        // Fields() starts with food units; start with the selected type's item row instead.
         fields.itemRows.clear();
         String firstType = RequestFormHelper.toRequestType((String) typeBox.getSelectedItem());
         if (!"Transportation".equals(firstType)) {
@@ -1755,7 +1747,6 @@ public class AdminMenuFrame extends JFrame {
         Runnable rebuild = () -> rebuildAdminRequestForm(formPanel,
                 (String) typeBox.getSelectedItem(), fields);
         typeBox.addActionListener(e -> {
-            // Item names and units differ by type, so start the item list fresh on a type change.
             String newType = RequestFormHelper.toRequestType((String) typeBox.getSelectedItem());
             fields.itemRows.clear();
             if (!"Transportation".equals(newType)) {
@@ -1837,12 +1828,10 @@ public class AdminMenuFrame extends JFrame {
     private static final String[] ADMIN_FOOD_UNITS = {"kg", "pcs", "pack", "g", "liter", "ml"};
     private static final String[] ADMIN_MEDICAL_UNITS = {"pcs", "box", "bottle", "pack", "tablet", "ml"};
 
-    /** New item row using the unit list for the given request type. */
     private RequestFormHelper.ItemRow newAdminItemRow(String type) {
         return new RequestFormHelper.ItemRow("Food".equals(type) ? ADMIN_FOOD_UNITS : ADMIN_MEDICAL_UNITS);
     }
-
-    /** Form row for the request dialog: label column, then input sized to its content. */
+  
     private JPanel requestFormRow(String label, JComponent input) {
         JPanel row = new JPanel(new BorderLayout(16, 0));
         row.setOpaque(false);
@@ -1906,7 +1895,7 @@ public class AdminMenuFrame extends JFrame {
             panel.add(itemHeader);
             panel.add(Box.createVerticalStrut(8));
 
-            // Column headers, shown once
+
             JPanel colHeader = new JPanel(new GridLayout(1, 3, 12, 0));
             colHeader.setOpaque(false);
             colHeader.setAlignmentX(Component.LEFT_ALIGNMENT);

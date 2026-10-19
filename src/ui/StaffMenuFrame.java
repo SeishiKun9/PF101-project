@@ -28,7 +28,6 @@ public class StaffMenuFrame extends JFrame {
     private final JTextField searchField = new JTextField(14);
     private List<AssistanceRequest> currentRequests = new ArrayList<>();
     private final JButton updateStatusBtn = new JButton("Update Status");
-    private final JButton deleteBtn = new JButton("Delete Request");
     private final JButton claimBtn = new JButton("Claim");
     private final JComboBox<String> assignmentFilterBox = new JComboBox<>(new String[]{"All", "Unassigned", "Mine"});
 
@@ -54,19 +53,16 @@ public class StaffMenuFrame extends JFrame {
         staffMenu.setFont(staffMenu.getFont().deriveFont(Font.BOLD, 12f));
         JMenuItem fileMenuItem = new JMenuItem("+ File Request for Resident");
         JMenuItem updateMenuItem = new JMenuItem("Update Request Status");
-        JMenuItem deleteMenuItem = new JMenuItem("Delete Selected Request");
         JMenuItem refreshMenuItem = new JMenuItem("Refresh Requests");
         JMenuItem logoutMenuItem = new JMenuItem("Logout");
         staffMenu.add(fileMenuItem);
         staffMenu.add(updateMenuItem);
-        staffMenu.add(deleteMenuItem);
         staffMenu.addSeparator();
         staffMenu.add(refreshMenuItem);
         staffMenu.add(logoutMenuItem);
         menuBar.add(staffMenu);
         setJMenuBar(menuBar);
 
-        // Dark blue header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(DARK_BLUE);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 28, 16, 28));
@@ -95,7 +91,7 @@ public class StaffMenuFrame extends JFrame {
         headerPanel.add(rightHeader, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Toolbar: search only
+  
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.setBackground(new Color(245, 247, 250));
         toolbar.setBorder(BorderFactory.createEmptyBorder(12, 20, 8, 20));
@@ -173,14 +169,12 @@ public class StaffMenuFrame extends JFrame {
         detailsScroll.setBorder(null);
 
         styleActionButton(updateStatusBtn, false);
-        styleActionButton(deleteBtn, false);
         styleActionButton(claimBtn, false);
         JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         bottomActions.setBackground(Color.WHITE);
         bottomActions.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
         bottomActions.add(claimBtn);
         bottomActions.add(updateStatusBtn);
-        bottomActions.add(deleteBtn);
 
         JPanel detailsWrap = new JPanel(new BorderLayout());
         detailsWrap.setBackground(Color.WHITE);
@@ -188,7 +182,7 @@ public class StaffMenuFrame extends JFrame {
         detailsWrap.add(detailsScroll, BorderLayout.CENTER);
         detailsWrap.add(bottomActions, BorderLayout.SOUTH);
 
-        // Right: history timeline for the selected request (own assigned type only).
+   
         historyPanel.setBackground(Color.WHITE);
         historyPanel.add(makeEmptyState("Select a request to view its history."), BorderLayout.CENTER);
         JPanel historyWrap = new JPanel(new BorderLayout());
@@ -235,8 +229,6 @@ public class StaffMenuFrame extends JFrame {
         updateStatusBtn.addActionListener(e -> updateStatusDialog());
         updateMenuItem.addActionListener(e -> updateStatusDialog());
         claimBtn.addActionListener(e -> claimOrReleaseSelected());
-        deleteBtn.addActionListener(e -> deleteSelectedRequest());
-        deleteMenuItem.addActionListener(e -> deleteSelectedRequest());
         assignmentFilterBox.addActionListener(e -> refreshList(searchField.getText().trim()));
         refreshMenuItem.addActionListener(e -> { staff.viewRequests(); refreshList(searchField.getText().trim()); });
         searchBtn.addActionListener(e -> { staff.searchRequest(); refreshList(searchField.getText().trim()); });
@@ -317,7 +309,7 @@ public class StaffMenuFrame extends JFrame {
         claimBtn.setText(claimLabel);
         styleActionButton(claimBtn, canClaim);
         styleActionButton(updateStatusBtn, canUpdate);
-        styleActionButton(deleteBtn, hasSel);
+        // Delete is admin-only; staff UI has no delete button.
     }
 
     /** Shows the history timeline for the selected (own-type) request, oldest first. */
@@ -788,32 +780,6 @@ public class StaffMenuFrame extends JFrame {
         showSelectedHistory();
     }
 
-    /** Deletes the selected own-type request after confirmation; history kept. */
-    private void deleteSelectedRequest() {
-        AssistanceRequest req = getSelectedRequest();
-        if (req == null) return;
-        if (!staff.canHandle(req)) {
-            JOptionPane.showMessageDialog(this,
-                    "You can only delete " + staff.getAssignedType() + " requests.",
-                    "Not Allowed", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Permanently delete request " + req.getRequestId() + "?",
-                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                // History ("Deleted") recorded inside Staff.deleteRequest first.
-                staff.deleteRequest(req);
-            } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(),
-                        "Delete Not Allowed", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            refreshList(searchField.getText().trim());
-            showSelectedHistory();
-        }
-    }
 
     /** Files a request on behalf of a resident, locked to this staff type. */
     private void fileRequestDialog() {

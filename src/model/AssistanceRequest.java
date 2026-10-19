@@ -30,6 +30,7 @@ public abstract class AssistanceRequest {
         this.dateRequested = dateRequested;
     }
 
+    // --- GETTERS & SETTERS ---
     public String getRequestId() { return requestId; }
     public void setRequestId(String requestId) { this.requestId = requestId; }
 
@@ -54,19 +55,18 @@ public abstract class AssistanceRequest {
     public LocalDateTime getDateRequested() { return dateRequested; }
     public void setDateRequested(LocalDateTime dateRequested) { this.dateRequested = dateRequested; }
 
-    /** Staff ID that claimed this request, or null if unassigned. */
     public String getAssignedStaffId() { return assignedStaffId; }
     public void setAssignedStaffId(String assignedStaffId) { this.assignedStaffId = assignedStaffId; }
 
+    // --- BUSINESS LOGIC ---
+    
     public boolean isAssigned() {
         return assignedStaffId != null && !assignedStaffId.trim().isEmpty();
     }
 
-    public void updateStatus(String newStatus) { this.status = newStatus; }
-
-    /** Aliases kept for existing callers. */
-    public String getDetails() { return additionalDetails; }
-    public void setDetails(String details) { this.additionalDetails = details; }
+    public void updateStatus(String newStatus) { 
+        this.status = newStatus; 
+    }
 
     public void displayDetails() {
         System.out.println(toDisplaySummary());
@@ -76,22 +76,25 @@ public abstract class AssistanceRequest {
         return "[" + type + "] " + requestId + " - " + status + " - " + additionalDetails;
     }
 
+    // --- FILE SAVING HELPERS ---
+
     /** Fields shared by every request type, in file order. */
     protected String commonFieldsForFile(String recordType) {
-        return String.join("|", "V2", encodeField(recordType), encodeField(requestId),
-                encodeField(residentId), encodeField(type), encodeField(location),
-                timeNeeded.format(DT_FMT), encodeField(additionalDetails), encodeField(status),
+        return String.join("|", 
+                "V2", 
+                encodeField(recordType), 
+                encodeField(requestId),
+                encodeField(residentId), 
+                encodeField(type), 
+                encodeField(location),
+                timeNeeded.format(DT_FMT), 
+                encodeField(additionalDetails), 
+                encodeField(status),
                 dateRequested.format(DT_FMT));
     }
 
-    /** Assignee as a trailing file field; empty when unassigned. */
     protected String encodeAssigneeField() {
         return assignedStaffId == null ? "" : encodeField(assignedStaffId);
-    }
-
-    /** Reads the trailing assignee field; returns "" when missing (older files). */
-    public static String decodeAssigneeField(String value) {
-        return value == null ? "" : decodeField(value).trim();
     }
 
     /** Escapes characters that would break the pipe-separated file format. */
@@ -103,6 +106,7 @@ public abstract class AssistanceRequest {
 
     /** Reverses encodeField. */
     public static String decodeField(String value) {
+        if (value == null) return "";
         return value.replace("%7C", "|").replace("%0D", "\r")
                 .replace("%0A", "\n").replace("%25", "%");
     }

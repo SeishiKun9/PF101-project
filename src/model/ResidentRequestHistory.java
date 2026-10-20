@@ -21,12 +21,24 @@ public class ResidentRequestHistory {
         this.updatedAt = updatedAt;
     }
 
-    public String getResidentId() { return residentId; }
-    public String getRequestId() { return requestId; }
-    public String getRequestType() { return requestType; }
-    public String getAction() { return action; }
-    public String getRequestSummary() { return requestSummary; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public String getResidentId() {
+         return residentId; 
+        }
+    public String getRequestId() {
+         return requestId; 
+        }
+    public String getRequestType() {
+         return requestType; 
+        }
+    public String getAction() {
+         return action; 
+        }
+    public String getRequestSummary() {
+         return requestSummary; 
+        }
+    public LocalDateTime getUpdatedAt() {
+         return updatedAt; 
+        }
 
     /** Writes one line: resident|request|type|action|summary|timestamp */
     public String toFileLine() {

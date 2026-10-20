@@ -3,7 +3,6 @@ package model;
 import storage.FileManager;
 import storage.RequestManager;
 import ui.AdminMenuFrame;
-
 import java.util.List;
 
 public class Admin extends User {
@@ -14,39 +13,76 @@ public class Admin extends User {
         this.adminId = adminId;
     }
 
-    public String getAdminId() { return adminId; }
-    public void setAdminId(String adminId) { this.adminId = adminId; }
+    public String getAdminId() {
+        return adminId;
+    }
+
+    public void setAdminId(String adminId) {
+        this.adminId = adminId;
+    }
 
     @Override
-    public String getUserId() { return adminId; }
-
+    public String getUserId() {
+        return adminId;
+    }
 
     public void createUser(User user) {
-        if (user == null) {
-            throw new IllegalArgumentException("User is required.");
-        }
-
         String contactError = user.validateContactDetails();
         if (contactError != null) {
             throw new IllegalArgumentException(contactError);
         }
 
         FileManager fm = new FileManager();
-
         for (User existing : fm.readUsers()) {
             if (existing.getUserId().equalsIgnoreCase(user.getUserId())) {
                 throw new IllegalArgumentException("User ID already exists.");
             }
         }
-
         fm.saveUser(user);
     }
 
     public void deleteUser(String userId) {
         FileManager fm = new FileManager();
         List<User> users = fm.readUsers();
-        users.removeIf(user -> user.getUserId().equals(userId));
+
+        User target = findUser(users, userId);
+        if (target instanceof Admin && countAdmins(users) <= 1) {
+            throw new IllegalArgumentException("You cannot delete the last Admin account.");
+        }
+        if (target instanceof Resident && residentHasRequests(fm, userId)) {
+            throw new IllegalArgumentException("This resident still has requests and cannot be deleted.");
+        }
+
+        users.removeIf(user -> user.getUserId().equalsIgnoreCase(userId));
         fm.saveAllUsers(users);
+    }
+
+    private User findUser(List<User> users, String userId) {
+        for (User user : users) {
+            if (user.getUserId().equalsIgnoreCase(userId)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
+    private int countAdmins(List<User> users) {
+        int count = 0;
+        for (User user : users) {
+            if (user instanceof Admin) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean residentHasRequests(FileManager fm, String residentId) {
+        for (AssistanceRequest request : fm.readRequests()) {
+            if (residentId.equalsIgnoreCase(request.getResidentId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void manageUser(String userId) {
@@ -57,70 +93,40 @@ public class Admin extends User {
         System.out.println(getFullName() + " is viewing a user's history.");
     }
 
-
-    public void fileRequestFor(String residentId, AssistanceRequest request) {
-
-        if (residentId == null || residentId.trim().isEmpty() || request == null || !residentId.equals(request.getResidentId())) {
-            throw new IllegalArgumentException("A valid resident and matching request are required.");
-        }
-
-        RequestManager rm = new RequestManager(new FileManager());
-
-        if (rm.findRequest(request.getRequestId()) != null) {
-            throw new IllegalArgumentException("Request ID already exists.");
-        }
-
-        rm.addRequest(request);
-    }
-
     public void viewAllRequest() {
         System.out.println(getFullName() + " is viewing all requests.");
     }
 
     public void updateRequestStatus(AssistanceRequest request, String status) {
-        if (request == null) {
-            throw new IllegalArgumentException("Request is required.");
+        FileManager fm = new FileManager();
+        Resident owner = findResident(fm, request.getResidentId());
+        if (owner == null) {
+            throw new IllegalArgumentException("Resident " + request.getResidentId() + " was not found.");
         }
-        if (!isOpen(request)) {
-            throw new IllegalArgumentException("Completed or cancelled requests cannot be updated.");
-        }
-        if (status == null || status.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status is required.");
-        }
-
         request.updateStatus(status);
-        saveRequest(request); 
+        new RequestManager(fm).updateRequest(request);
+               fm.recordResidentRequestAction(owner, request,
+                "Status changed to " + status + " by " + getUserId());
     }
 
-    public void assignStaff(AssistanceRequest request, Staff staff) {
-        if (request == null) {
-            throw new IllegalArgumentException("Request is required.");
+    private Resident findResident(FileManager fm, String residentId) {
+        for (User user : fm.readUsers()) {
+            if (user instanceof Resident && residentId.equals(((Resident) user).getResidentId())) {
+                return (Resident) user;
+            }
         }
-        if (!"Pending".equalsIgnoreCase(request.getStatus())) {
-            throw new IllegalArgumentException("Only Pending requests can be assigned or reassigned.");
-        }
-        if (staff != null && !staff.canHandle(request)) {
-            throw new IllegalArgumentException("This staff member does not handle " + request.getType() + " requests.");
-        }
-
-        request.setAssignedStaffId(staff == null ? null : staff.getStaffId());
-        saveRequest(request); 
+        return null;
     }
-
+    
     public void deleteRequest(AssistanceRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("Request is required.");
-        }
         new FileManager().deleteRequestFromFile(request.getRequestId());
     }
 
     public static boolean isOpen(AssistanceRequest request) {
         String status = request.getStatus();
-        return status != null && !"Completed".equalsIgnoreCase(status) && !"Cancelled".equalsIgnoreCase(status);
-    }
-
-    private void saveRequest(AssistanceRequest request) {
-        new RequestManager(new FileManager()).updateRequest(request);
+        return status != null
+                && !status.equalsIgnoreCase("Completed")
+                && !status.equalsIgnoreCase("Cancelled");
     }
 
     @Override
@@ -130,8 +136,7 @@ public class Admin extends User {
 
     @Override
     public String toFileLine() {
-        return String.join("|",
-                "Admin",
+        return String.join("|", "Admin",
                 AssistanceRequest.encodeField(getFullName()),
                 AssistanceRequest.encodeField(getPassword()),
                 AssistanceRequest.encodeField(adminId),

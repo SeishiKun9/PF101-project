@@ -25,7 +25,8 @@ public class FileManager {
                 dir = dir.getParent();
             }
         } catch (Exception ignored) { }
-        return "data";
+    
+        return Paths.get("").toAbsolutePath().normalize().resolve("data").toString();
     }
 
     private static final String DATA_DIR = resolveDataDir();
@@ -57,17 +58,21 @@ public class FileManager {
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             return true;
         } catch (IOException e) {
-            System.err.println("Error writing file entry: " + e.getMessage());
+            System.err.println("Could not save to " + path.getFileName()
+                    + ". Please check the data folder. Error: " + e.getMessage());
             return false;
         }
     }
 
-    private void writeLines(Path path, List<String> lines) {
+    private boolean writeLines(Path path, List<String> lines) {
         try {
             Files.write(path, lines.stream().filter(l -> l != null && !l.trim().isEmpty()).toList(),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            return true;
         } catch (IOException e) {
-            System.err.println("Error rewriting file: " + e.getMessage());
+            System.err.println("Could not save to " + path.getFileName()
+                    + ". Your old data was kept. Error: " + e.getMessage());
+            return false;
         }
     }
 
@@ -146,7 +151,7 @@ public class FileManager {
         writeLines(USERS, users.stream().map(User::toFileLine).toList());
     }
 
-    // --- SIMPLIFIED ID GENERATORS ---
+
 
     private String generateNextUserId(String prefix, long minimum, Class<? extends User> roleClass) {
         List<String> ids = readUsers().stream()

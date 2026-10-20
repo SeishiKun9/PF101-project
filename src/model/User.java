@@ -1,4 +1,3 @@
-
 package model;
 
 public abstract class User {
@@ -8,7 +7,7 @@ public abstract class User {
     private String address;
     private String contactNo;
 
-      public User(String fullName, String password, String role) {
+    public User(String fullName, String password, String role) {
         this.fullName = fullName;
         this.password = password;
         this.role = role;
@@ -30,7 +29,11 @@ public abstract class User {
         this.contactNo = contactNo == null ? "" : contactNo.trim();
     }
 
+
     public String validateContactDetails() {
+        if (!"Resident".equals(role)) {
+            return null;
+        }
         if (address == null || address.trim().isEmpty()) {
             return "Address is required.";
         }
@@ -75,7 +78,6 @@ public abstract class User {
         System.out.println(fullName + " has logged out.");
     }
 
-    /** Each role renders its own menu window (polymorphism). */
     public abstract void showMenu();
 
     public abstract String getUserId();

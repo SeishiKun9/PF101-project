@@ -51,11 +51,9 @@ public class StaffMenuFrame extends JFrame {
         menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 225, 230)));
         JMenu staffMenu = new JMenu("Staff Menu");
         staffMenu.setFont(staffMenu.getFont().deriveFont(Font.BOLD, 12f));
-        JMenuItem fileMenuItem = new JMenuItem("+ File Request for Resident");
         JMenuItem updateMenuItem = new JMenuItem("Update Request Status");
         JMenuItem refreshMenuItem = new JMenuItem("Refresh Requests");
         JMenuItem logoutMenuItem = new JMenuItem("Logout");
-        staffMenu.add(fileMenuItem);
         staffMenu.add(updateMenuItem);
         staffMenu.addSeparator();
         staffMenu.add(refreshMenuItem);
@@ -113,14 +111,12 @@ public class StaffMenuFrame extends JFrame {
         assignmentFilterBox.setPreferredSize(new Dimension(110, 30));
         JButton searchBtn = createDarkBlueButton("Search");
         JButton clearBtn = createDarkBlueButton("Clear");
-        JButton fileBtn = createDarkBlueButton("+ File Request");
         searchRight.add(sLbl);
         searchRight.add(searchField);
         searchRight.add(viewLbl);
         searchRight.add(assignmentFilterBox);
         searchRight.add(searchBtn);
         searchRight.add(clearBtn);
-        searchRight.add(fileBtn);
         toolbar.add(deptLbl, BorderLayout.WEST);
         toolbar.add(searchRight, BorderLayout.EAST);
 
@@ -224,8 +220,6 @@ public class StaffMenuFrame extends JFrame {
             }
         });
 
-        fileBtn.addActionListener(e -> fileRequestDialog());
-        fileMenuItem.addActionListener(e -> fileRequestDialog());
         updateStatusBtn.addActionListener(e -> updateStatusDialog());
         updateMenuItem.addActionListener(e -> updateStatusDialog());
         claimBtn.addActionListener(e -> claimOrReleaseSelected());
@@ -290,8 +284,9 @@ public class StaffMenuFrame extends JFrame {
             canUpdate = mine && !terminal;
             if (hasSel) {
                 if (mine) {
-                    canClaim = true;
-                    claimLabel = "Release";
+                    // Once claimed, the request stays with this staff member until it is finished.
+                    canClaim = false;
+                    claimLabel = "Claimed";
                 } else if (takenByOther) {
                     canClaim = false;
                     claimLabel = "Taken by " + assignee.trim();
@@ -324,7 +319,7 @@ public class StaffMenuFrame extends JFrame {
             historyPanel.add(makeEmptyState("Select a request to view its history."),
                     BorderLayout.CENTER);
         } else {
-            historyPanel.add(buildStaffRequestTimeline(req.getRequestId()), BorderLayout.CENTER);
+            historyPanel.add(buildStaffRequestTimeline(req), BorderLayout.CENTER);
         }
         historyPanel.revalidate();
         historyPanel.repaint();
@@ -633,7 +628,8 @@ public class StaffMenuFrame extends JFrame {
     }
 
     /** Timeline of stored history for one own-type request, oldest first. Never fabricated. */
-    private JComponent buildStaffRequestTimeline(String requestId) {
+    private JComponent buildStaffRequestTimeline(AssistanceRequest req) {
+        String requestId = req.getRequestId();
         List<TimelineEvent> events = new ArrayList<>();
         // Only own-type requests reach this method, so the request ID alone selects the entries.
         for (ResidentRequestHistory entry : fileManager.readResidentRequestHistory()) {
@@ -647,6 +643,11 @@ public class StaffMenuFrame extends JFrame {
                 events.add(new TimelineEvent(entry.getProcessedAt(),
                         "Status: " + entry.getStatus(), "Staff ID: " + entry.getStaffId()));
             }
+        }
+        
+        java.time.LocalDateTime submitted = req.getDateRequested();
+        if (submitted != null) {
+            events.removeIf(ev -> ev.at != null && ev.at.isBefore(submitted));
         }
         events.sort((a, b) -> a.at.compareTo(b.at));
         JPanel timeline = new JPanel();
@@ -750,16 +751,7 @@ public class StaffMenuFrame extends JFrame {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
         if (staff.getStaffId().equals(req.getAssignedStaffId())) {
-            try {
-                staff.releaseRequest(req);
-            } catch (IllegalArgumentException | IllegalStateException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(),
-                        "Cannot Release", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            JOptionPane.showMessageDialog(this, "Released " + req.getRequestId() + " back to the pool.");
-            refreshList(searchField.getText().trim());
-            showSelectedHistory();
+            // Already claimed by you. Releasing is not allowed, so nothing to do.
             return;
         }
         if (!"Pending".equalsIgnoreCase(req.getStatus())) {
@@ -781,260 +773,4 @@ public class StaffMenuFrame extends JFrame {
     }
 
 
-    /** Files a request on behalf of a resident, locked to this staff type. */
-    private void fileRequestDialog() {
-        String onlyType = staff.getAssignedType();
-        List<Resident> residents = new ArrayList<>();
-        for (User u : fileManager.readUsers()) {
-            if (u instanceof Resident) residents.add((Resident) u);
-        }
-        if (residents.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No residents found.",
-                    "No Residents", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        JComboBox<String> residentBox = new JComboBox<>();
-        for (Resident r : residents) {
-            residentBox.addItem(r.getFullName() + "  (" + r.getResidentId() + ")");
-        }
-        JLabel typeLbl = new JLabel(onlyType + " Assistance");
-        typeLbl.setFont(new Font("SansSerif", Font.BOLD, 13));
-        typeLbl.setForeground(DARK_BLUE);
-        JPanel typeHolder = new JPanel(new BorderLayout());
-        typeHolder.setBackground(new Color(248, 250, 252));
-        typeHolder.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(180, 190, 210), 1),
-                BorderFactory.createEmptyBorder(6, 10, 6, 10)));
-        typeHolder.add(typeLbl, BorderLayout.CENTER);
-        typeHolder.setPreferredSize(new Dimension(260, 36));
-        RequestFormHelper.Fields fields = new RequestFormHelper.Fields();
-        // Fields() starts with food units; replace the starting row with this type's units.
-        fields.itemRows.clear();
-        fields.itemRows.add(newItemRow(RequestFormHelper.toRequestType(onlyType)));
-        JPanel formPanel = new JPanel();
-        rebuildStaffRequestForm(formPanel, onlyType, fields);
-
-        JPanel top = new JPanel();
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.setOpaque(false);
-        top.setBorder(BorderFactory.createEmptyBorder(4, 4, 12, 4));
-        top.add(formRow("Resident", residentBox));
-        top.add(formRow("Assistance Type", typeHolder));
-        JPanel body = new JPanel();
-        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-        body.setBackground(Color.WHITE);
-        body.setBorder(BorderFactory.createEmptyBorder(16, 20, 8, 20));
-        body.add(top);
-        JScrollPane formScroll = new JScrollPane(formPanel);
-        formScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-        formScroll.setPreferredSize(new Dimension(560, 380));
-        formScroll.setBorder(BorderFactory.createLineBorder(new Color(203, 213, 225)));
-        formScroll.getVerticalScrollBar().setUnitIncrement(16);
-        body.add(formScroll);
-        JDialog dialog = new JDialog(this, "File " + onlyType + " Request", true);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setLayout(new BorderLayout());
-        dialog.getContentPane().setBackground(Color.WHITE);
-        dialog.add(body, BorderLayout.CENTER);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
-        buttons.setBackground(Color.WHITE);
-        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
-        JButton submitBtn = createDarkBlueButton("Submit Request");
-        JButton cancelBtn = createDarkBlueButton("Cancel");
-        buttons.add(cancelBtn);
-        buttons.add(submitBtn);
-        dialog.add(buttons, BorderLayout.SOUTH);
-
-        submitBtn.addActionListener(e -> {
-            int rIdx = residentBox.getSelectedIndex();
-            if (rIdx < 0 || rIdx >= residents.size()) return;
-            Resident target = residents.get(rIdx);
-            String type = RequestFormHelper.toRequestType(onlyType);
-            if (!RequestFormHelper.hasRequiredFields(dialog, type, fields)) return;
-            try {
-                AssistanceRequest req = RequestFormHelper.createRequest(type,
-                        requestManager.nextRequestId(), target.getResidentId(),
-                        fields, "Pending", java.time.LocalDateTime.now());
-                // Type guard inside Staff.fileRequestFor; "Filed" recorded there.
-                staff.fileRequestFor(target.getResidentId(), req);
-                fileManager.recordResidentRequestAction(target, req, "Filed by staff");
-                refreshList(searchField.getText().trim());
-                showSelectedHistory();
-                JOptionPane.showMessageDialog(dialog,
-                        "Request filed for " + target.getFullName()
-                                + ".\nReference No.: " + req.getRequestId(),
-                        "Request Filed", JOptionPane.INFORMATION_MESSAGE);
-                dialog.dispose();
-            } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(dialog, ex.getMessage(),
-                        "Invalid Request", JOptionPane.WARNING_MESSAGE);
-            } catch (RuntimeException ex) {
-                JOptionPane.showMessageDialog(dialog,
-                        "Could not save the request: " + ex.getMessage(),
-                        "Save Failed", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        cancelBtn.addActionListener(e -> dialog.dispose());
-        dialog.pack();
-        dialog.setMinimumSize(new Dimension(620, 600));
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }
-
-    private static final String[] FOOD_UNITS = {"kg", "pcs", "pack", "g", "liter", "ml"};
-    private static final String[] MEDICAL_UNITS = {"pcs", "box", "bottle", "pack", "tablet", "ml"};
-
-    /** New item row using the unit list for the given request type. */
-    private RequestFormHelper.ItemRow newItemRow(String type) {
-        return new RequestFormHelper.ItemRow("Food".equals(type) ? FOOD_UNITS : MEDICAL_UNITS);
-    }
-
-    private JPanel formRow(String label, JComponent input) {
-        JPanel row = new JPanel(new BorderLayout(16, 0));
-        row.setOpaque(false);
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        int h = Math.max(36, input.getPreferredSize().height + 4);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, h + 8));
-        row.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(new Font("SansSerif", Font.BOLD, 12));
-        lbl.setForeground(DARK_BLUE);
-        lbl.setPreferredSize(new Dimension(150, 28));
-        lbl.setVerticalAlignment(SwingConstants.TOP);
-        row.add(lbl, BorderLayout.WEST);
-        row.add(input, BorderLayout.CENTER);
-        return row;
-    }
-
-    private void styleFormField(JComponent field) {
-        field.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        if (field instanceof JTextField) {
-            ((JTextField) field).setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(180, 190, 210), 1),
-                    BorderFactory.createEmptyBorder(8, 10, 8, 10)));
-        }
-    }
-
-    /** Form body for the staff member's own assigned type only (no type picker). */
-    private void rebuildStaffRequestForm(JPanel panel, String onlyType,
-                                         RequestFormHelper.Fields fields) {
-        String type = RequestFormHelper.toRequestType(onlyType);
-        panel.removeAll();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
-
-        // Section heading, left aligned (same as the resident form).
-        JLabel heading = new JLabel((type + " Assistance").toUpperCase());
-        heading.setFont(new Font("SansSerif", Font.BOLD, 14));
-        heading.setForeground(DARK_BLUE);
-        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
-        heading.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-        panel.add(heading);
-        panel.add(Box.createVerticalStrut(4));
-        JSeparator sep = new JSeparator();
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
-        sep.setForeground(new Color(220, 225, 230));
-        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(sep);
-        panel.add(Box.createVerticalStrut(14));
-
-        if (!"Transportation".equals(type)) {
-            String itemLabel = "Food".equals(type) ? "Food Item" : "Medical Item";
-
-            // "Requested Items" header with + and - buttons (same as the resident form).
-            JPanel itemHeader = new JPanel(new BorderLayout());
-            itemHeader.setOpaque(false);
-            itemHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
-            itemHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
-            JLabel itemsLbl = new JLabel("Requested Items");
-            itemsLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
-            itemsLbl.setForeground(DARK_BLUE);
-            itemHeader.add(itemsLbl, BorderLayout.WEST);
-            JPanel itemBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-            itemBtns.setOpaque(false);
-            JButton addItemBtn = createDarkBlueButton("+");
-            JButton removeItemBtn = createDarkBlueButton("-");
-            removeItemBtn.setEnabled(fields.itemRows.size() > 1);
-            itemBtns.add(addItemBtn);
-            itemBtns.add(removeItemBtn);
-            itemHeader.add(itemBtns, BorderLayout.EAST);
-            panel.add(itemHeader);
-            panel.add(Box.createVerticalStrut(8));
-
-            // Column headers
-            JPanel colHeader = new JPanel(new GridLayout(1, 3, 12, 0));
-            colHeader.setOpaque(false);
-            colHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
-            colHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
-            for (String h : new String[]{itemLabel, "Quantity", "Unit"}) {
-                JLabel hl = new JLabel(h);
-                hl.setFont(new Font("SansSerif", Font.BOLD, 11));
-                hl.setForeground(new Color(100, 116, 139));
-                colHeader.add(hl);
-            }
-            panel.add(colHeader);
-            panel.add(Box.createVerticalStrut(6));
-
-            // Item rows
-            for (RequestFormHelper.ItemRow r : fields.itemRows) {
-                JPanel itemRow = new JPanel(new GridLayout(1, 3, 12, 0));
-                itemRow.setOpaque(false);
-                itemRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-                itemRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-                styleFormField(r.nameField);
-                styleFormField(r.quantityField);
-                itemRow.add(r.nameField);
-                itemRow.add(r.quantityField);
-                itemRow.add(r.unitBox);
-                panel.add(itemRow);
-                panel.add(Box.createVerticalStrut(6));
-            }
-
-            addItemBtn.addActionListener(e -> {
-                fields.itemRows.add(newItemRow(type));
-                rebuildStaffRequestForm(panel, onlyType, fields);
-            });
-            removeItemBtn.addActionListener(e -> {
-                if (fields.itemRows.size() > 1) {
-                    fields.itemRows.remove(fields.itemRows.size() - 1);
-                    rebuildStaffRequestForm(panel, onlyType, fields);
-                }
-            });
-
-            panel.add(Box.createVerticalStrut(10));
-            styleFormField(fields.locationField);
-            panel.add(formRow("Location / Address", fields.locationField));
-        } else {
-            styleFormField(fields.pickupField);
-            styleFormField(fields.destinationField);
-            styleFormField(fields.passengerCountField);
-            panel.add(formRow("Pickup Location", fields.pickupField));
-            panel.add(formRow("Destination", fields.destinationField));
-            panel.add(formRow("No. of Passengers", fields.passengerCountField));
-        }
-
-        panel.add(Box.createVerticalStrut(6));
-        styleFormField(fields.whenNeededField);
-        panel.add(formRow("Time Needed", fields.whenNeededField));
-        JLabel hint = new JLabel("Format: yyyy-MM-dd HH:mm");
-        hint.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        hint.setForeground(new Color(148, 163, 184));
-        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
-        hint.setBorder(BorderFactory.createEmptyBorder(0, 160, 8, 0));
-        panel.add(hint);
-
-        fields.additionalDetailsArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        fields.additionalDetailsArea.setLineWrap(true);
-        fields.additionalDetailsArea.setWrapStyleWord(true);
-        fields.additionalDetailsArea.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
-        JScrollPane detailsScroll = new JScrollPane(fields.additionalDetailsArea);
-        detailsScroll.setBorder(BorderFactory.createLineBorder(new Color(180, 190, 210), 1));
-        detailsScroll.setPreferredSize(new Dimension(320, 72));
-        detailsScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-        panel.add(formRow("Additional Details", detailsScroll));
-        panel.revalidate();
-        panel.repaint();
-    }
 }

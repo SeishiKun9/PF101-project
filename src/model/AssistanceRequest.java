@@ -64,8 +64,25 @@ public abstract class AssistanceRequest {
         return assignedStaffId != null && !assignedStaffId.trim().isEmpty();
     }
 
-    public void updateStatus(String newStatus) { 
-        this.status = newStatus; 
+    // Student-friendly check: only these 5 statuses are allowed in the system.
+    public static boolean isValidStatus(String status) {
+        if (status == null) return false;
+        String s = status.trim();
+        if (s.equalsIgnoreCase("Pending")) return true;
+        if (s.equalsIgnoreCase("In Progress")) return true;
+        if (s.equalsIgnoreCase("Help is OTW")) return true;
+        if (s.equalsIgnoreCase("Completed")) return true;
+        if (s.equalsIgnoreCase("Cancelled")) return true;
+        return false;
+    }
+
+    public void updateStatus(String newStatus) {
+        // Reject invalid statuses with a clear message students can explain.
+        if (!isValidStatus(newStatus)) {
+            throw new IllegalArgumentException(
+                    "Invalid status. Use: Pending, In Progress, Help is OTW, Completed, or Cancelled.");
+        }
+        this.status = newStatus.trim();
     }
 
     public void displayDetails() {

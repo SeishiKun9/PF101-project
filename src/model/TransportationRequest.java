@@ -15,17 +15,29 @@ public class TransportationRequest extends AssistanceRequest {
         this.passengerCount = passengerCount;
     }
 
-    public String getPickupLocation() { return pickupLocation; }
+    public String getPickupLocation() {
+         return pickupLocation; 
+        }
+
     public void setPickupLocation(String pickupLocation) {
         this.pickupLocation = pickupLocation;
         setLocation(pickupLocation); 
     }
     
-    public String getDestination() { return destination; }
-    public void setDestination(String destination) { this.destination = destination; }
+    public String getDestination() {
+         return destination; 
+        }
+    public void setDestination(String destination) {
+         this.destination = destination; 
+        }
     
-    public int getPassengerCount() { return passengerCount; }
-    public void setPassengerCount(int passengerCount) { this.passengerCount = passengerCount; }
+    public int getPassengerCount() {
+         return passengerCount; 
+        }
+
+    public void setPassengerCount(int passengerCount) {
+         this.passengerCount = passengerCount; 
+        }
 
     @Override
     public void displayDetails() {

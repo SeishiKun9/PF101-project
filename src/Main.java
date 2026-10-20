@@ -36,7 +36,7 @@ public class Main {
             fm.saveUser(new Resident("Juan Dela Cruz", "res123", "RSD3000", "123 Rizal St.", "917123456"));
         }
 
-        // Default Request
+        // Default Requests
         if (fm.readRequests().isEmpty()) {
             LocalDateTime now = LocalDateTime.now();
             

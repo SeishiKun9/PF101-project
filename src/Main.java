@@ -1,11 +1,10 @@
-import storage.FileManager;
-import model.*;
-import ui.LoginFrame;
-
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import model.*;
+import storage.FileManager;
+import ui.LoginFrame;
 
 public class Main {
     public static void main(String[] args) {

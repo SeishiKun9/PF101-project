@@ -18,9 +18,15 @@ public class FileManager {
     public static String resolveDataDir() {
         try {
             Path dir = Paths.get("").toAbsolutePath().normalize();
+            if (Files.isDirectory(dir.resolve("PF101-project").resolve("data"))) {
+                return dir.resolve("PF101-project").resolve("data").toString();
+            }
             while (dir != null) {
                 if (Files.isDirectory(dir.resolve("data")) && Files.isDirectory(dir.resolve("src"))) {
                     return dir.resolve("data").toString();
+                }
+                if (Files.isDirectory(dir.resolve("PF101-project").resolve("data"))) {
+                    return dir.resolve("PF101-project").resolve("data").toString();
                 }
                 dir = dir.getParent();
             }

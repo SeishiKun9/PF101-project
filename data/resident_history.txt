@@ -1,0 +1,7 @@
+RSD3001|REQ4001|Food|Request updated|[Food] REQ4001 - Pending - [rice %7C 2 %7C kg, egg %7C 12 %7C pcs] - Location: r.enerio street - Needed: 2026-10-21T09:00:00 - kutas na|2026-10-20T20:37:01
+RSD3000|REQ4000|Medical|Status changed to In Progress by ADM1000|[Medical] REQ4000 - In Progress - [Amlodipine %7C 1 %7C box] - Location: 123 Rizal St. - Needed: 2026-10-21T09:00:30 - Needed for hypertension|2026-10-20T20:41:29
+RSD3001|REQ4002|Medical|Status changed to Help is OTW by ADM1000|[Medical] REQ4002 - Help is OTW - [saridon %7C 1 %7C pcs] - Location: r.enerio - Needed: 2026-10-21T09:00:00 - labad olo|2026-10-20T20:47:56
+RSD3000|REQ4000|Medical|Status changed to Help is OTW by ADM1000|[Medical] REQ4000 - Help is OTW - [Amlodipine %7C 1 %7C box] - Location: 123 Rizal St. - Needed: 2026-10-21T09:00:30 - Needed for hypertension|2026-10-21T22:47:01
+RSD3002|REQ4005|Medical|Request updated|[Medical] REQ4005 - Pending - [saridon %7C 3 %7C pack] - Location: tiptip - Needed: 2026-10-22T09:00:00 - asap|2026-10-21T22:48:13
+RSD3002|REQ4005|Medical|Status changed to In Progress by ADM1000|[Medical] REQ4005 - In Progress - [saridon %7C 3 %7C pack] - Location: tiptip - Needed: 2026-10-22T09:00:00 - asap|2026-10-21T22:56:24
+RSD3002|REQ4006|Transportation|Status changed to In Progress by ADM1000|[Transportation] REQ4006 - In Progress - youcon -> alturas - Passengers: 1 - Needed: 2026-10-22T09:00:00 - asd|2026-10-21T23:24:00

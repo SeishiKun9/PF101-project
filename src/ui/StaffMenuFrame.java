@@ -495,6 +495,11 @@ public class StaffMenuFrame extends JFrame {
     }
 
     private void refreshList(String searchTerm) {
+        String selectedRequestId = null;
+        int selectedIndex = requestList.getSelectedIndex();
+        if (selectedIndex >= 0 && selectedIndex < currentRequests.size()) {
+            selectedRequestId = currentRequests.get(selectedIndex).getRequestId();
+        }
         requestListModel.clear();
         currentRequests.clear();
         String query = searchTerm == null ? "" : searchTerm.toLowerCase();
@@ -521,6 +526,14 @@ public class StaffMenuFrame extends JFrame {
         detailsPanel.add(detailsPlaceholder, BorderLayout.CENTER);
         detailsPanel.revalidate();
         detailsPanel.repaint();
+        if (selectedRequestId != null) {
+            for (int i = 0; i < currentRequests.size(); i++) {
+                if (selectedRequestId.equals(currentRequests.get(i).getRequestId())) {
+                    requestList.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
         updateActionButtonsState();
     }
 

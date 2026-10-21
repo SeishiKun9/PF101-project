@@ -360,7 +360,7 @@ public class AdminMenuFrame extends JFrame {
         styleActionButton(manageUserBtn, false);
     }
 
-    private void showSelectedUserDetails() {
+  private void showSelectedUserDetails() {
         int idx = userList.getSelectedIndex();
         userDetailsPanel.removeAll();
         if (idx < 0 || idx >= currentUsers.size()) {
@@ -394,18 +394,23 @@ public class AdminMenuFrame extends JFrame {
         JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        grid.add(makeFieldBlock("User ID", getUserId(u)));
-        grid.add(makeFieldBlock("Role", u.getRole()));
+
         if (u instanceof Resident) {
+            // Left untouched for residents
+            grid.add(makeFieldBlock("User ID", getUserId(u)));
+            grid.add(makeFieldBlock("Role", u.getRole()));
             Resident r = (Resident) u;
             grid.add(makeFieldBlock("Address", r.getAddress()));
             grid.add(makeFieldBlock("Contact", r.getContactNo()));
         } else if (u instanceof Staff) {
             Staff s = (Staff) u;
-            grid.add(makeFieldBlock("Assigned Type", s.getAssignedType()));
             grid.add(makeFieldBlock("Staff ID", s.getStaffId()));
+            grid.add(makeFieldBlock("Role", u.getRole()));
+            grid.add(makeFieldBlock("Assigned Type", s.getAssignedType()));
         } else if (u instanceof Admin) {
-            grid.add(makeFieldBlock("Admin ID", ((Admin) u).getAdminId()));
+            Admin a = (Admin) u;
+            grid.add(makeFieldBlock("Admin ID", a.getAdminId()));
+            grid.add(makeFieldBlock("Role", u.getRole()));
             grid.add(makeFieldBlock("Access", "Full System"));
         }
         card.add(grid);
@@ -415,7 +420,7 @@ public class AdminMenuFrame extends JFrame {
         userDetailsPanel.revalidate();
         userDetailsPanel.repaint();
     }
-
+    
     private void refreshRequestList(String searchTerm) {
         String previousId = getSelectedRequestId();
         requestListModel.clear();

@@ -16,10 +16,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-/**
- * Admin menu: manage users and view all requests.
- * Styled like ResidentMenuFrame (dark blue, split panels).
- */
 public class AdminMenuFrame extends JFrame {
     private static final long serialVersionUID = 1L;
     private final Admin admin;
@@ -128,32 +124,6 @@ public class AdminMenuFrame extends JFrame {
         setLayout(new BorderLayout());
         getContentPane().setBackground(new Color(245, 247, 250));
 
-        JMenuBar menuBar = new JMenuBar();
-        menuBar.setBackground(Color.WHITE);
-        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 225, 230)));
-        JMenu adminMenu = new JMenu("Admin Menu");
-        adminMenu.setFont(adminMenu.getFont().deriveFont(Font.BOLD, 12f));
-        JMenuItem createMenuItem = new JMenuItem("+ Create User");
-        JMenuItem editMenuItem = new JMenuItem("Manage Selected User");
-        JMenuItem historyMenuItem = new JMenuItem("View User History");
-        JMenuItem myHistoryMenuItem = new JMenuItem("View My Admin History");
-        JMenuItem updateStatusMenuItem = new JMenuItem("Update Selected Request Status");
-        JMenuItem refreshReqMenuItem = new JMenuItem("Refresh All Requests");
-        JMenuItem deleteReqMenuItem = new JMenuItem("Delete Selected Request");
-        JMenuItem logoutMenuItem = new JMenuItem("Logout");
-        adminMenu.add(createMenuItem);
-        adminMenu.add(editMenuItem);
-        adminMenu.add(historyMenuItem);
-        adminMenu.add(myHistoryMenuItem);
-        adminMenu.addSeparator();
-        adminMenu.add(updateStatusMenuItem);
-        adminMenu.add(refreshReqMenuItem);
-        adminMenu.add(deleteReqMenuItem);
-        adminMenu.addSeparator();
-        adminMenu.add(logoutMenuItem);
-        menuBar.add(adminMenu);
-        setJMenuBar(menuBar);
-
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(DARK_BLUE);
@@ -173,6 +143,7 @@ public class AdminMenuFrame extends JFrame {
         nameAndMeta.add(Box.createVerticalStrut(4));
         nameAndMeta.add(metaLbl);
         headerPanel.add(nameAndMeta, BorderLayout.WEST);
+
         JButton logoutBtn = createDarkBlueButton("Logout");
         JButton myHistoryBtn = createDarkBlueButton("My History");
         JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
@@ -288,7 +259,6 @@ public class AdminMenuFrame extends JFrame {
         reqSearch.add(clearReqBtn);
         reqTop.add(reqSearch, BorderLayout.EAST);
 
-        // Left panel (about 22%): request IDs and statuses
         styleList(requestList);
         JScrollPane reqListScroll = new JScrollPane(requestList);
         reqListScroll.setBorder(null);
@@ -297,7 +267,6 @@ public class AdminMenuFrame extends JFrame {
         requestListCards.add(makeEmptyState("No assistance requests found."), "empty");
         JPanel reqLeft = createTitledPanel("  All Requests", requestListCards);
 
-        // Middle panel (about 39%): details of the selected request
         requestDetailsPanel.setLayout(new BorderLayout());
         requestDetailsPanel.setBackground(Color.WHITE);
         requestDetailsPlaceholder.setFont(requestDetailsPlaceholder.getFont().deriveFont(Font.PLAIN, 14f));
@@ -315,12 +284,10 @@ public class AdminMenuFrame extends JFrame {
         JPanel reqMiddle = createTitledPanel("  Request Details", reqDetailsScroll);
         reqMiddle.add(reqBottom, BorderLayout.SOUTH);
 
-        // Right panel (about 39%): activity timeline for the selected request
         requestHistoryPanel.setBackground(Color.WHITE);
         requestHistoryPanel.add(makeEmptyState("Select a request to view its history."), BorderLayout.CENTER);
         JPanel reqRight = createTitledPanel("  Request History", requestHistoryPanel);
 
-        // Outer split: 22% | rest. Inner split: middle and right share the rest equally (39% each).
         JSplitPane middleRightSplit = makeSplit(reqMiddle, reqRight, 390);
         middleRightSplit.setResizeWeight(0.5);
         JSplitPane reqSplit = makeSplit(reqLeft, middleRightSplit, 220);
@@ -335,12 +302,8 @@ public class AdminMenuFrame extends JFrame {
 
         // Listeners
         createBtn.addActionListener(e -> createUserDialog());
-        createMenuItem.addActionListener(e -> createUserDialog());
         manageUserBtn.addActionListener(e -> editSelectedUser());
-        editMenuItem.addActionListener(e -> editSelectedUser());
-        historyMenuItem.addActionListener(e -> { admin.viewUserHistory(); viewSelectedUserHistory(); });
         myHistoryBtn.addActionListener(e -> viewOwnAdminHistory());
-        myHistoryMenuItem.addActionListener(e -> viewOwnAdminHistory());
         searchUsersBtn.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
         userSearchField.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
         clearUserSearchBtn.addActionListener(e -> { userSearchField.setText(""); refreshUserList(""); });
@@ -348,11 +311,8 @@ public class AdminMenuFrame extends JFrame {
         searchReqBtn.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
         requestSearchField.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
         clearReqBtn.addActionListener(e -> { requestSearchField.setText(""); refreshRequestList(null); });
-        refreshReqMenuItem.addActionListener(e -> { admin.viewAllRequest(); refreshRequestList(requestSearchField.getText().trim()); });
         updateStatusBtn.addActionListener(e -> updateSelectedRequestStatus());
-        updateStatusMenuItem.addActionListener(e -> updateSelectedRequestStatus());
         deleteRequestBtn.addActionListener(e -> deleteSelectedRequest());
-        deleteReqMenuItem.addActionListener(e -> deleteSelectedRequest());
 
         userList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -369,14 +329,12 @@ public class AdminMenuFrame extends JFrame {
                 int idx = requestList.getSelectedIndex();
                 boolean hasSel = idx >= 0 && idx < currentRequests.size();
                 styleActionButton(deleteRequestBtn, hasSel);
-                // Completed and Cancelled are final: they cannot be updated.
                 boolean canUpdate = hasSel && Admin.isOpen(currentRequests.get(idx));
                 styleActionButton(updateStatusBtn, canUpdate);
             }
         });
 
         logoutBtn.addActionListener(e -> { admin.logout(); dispose(); new LoginFrame(fileManager).setVisible(true); });
-        logoutMenuItem.addActionListener(e -> { admin.logout(); dispose(); new LoginFrame(fileManager).setVisible(true); });
     }
 
     private void refreshUserList() {
@@ -459,7 +417,6 @@ public class AdminMenuFrame extends JFrame {
     }
 
     private void refreshRequestList(String searchTerm) {
-        // Remember the selection so it can be restored if it is still in the results.
         String previousId = getSelectedRequestId();
         requestListModel.clear();
         currentRequests.clear();
@@ -484,7 +441,6 @@ public class AdminMenuFrame extends JFrame {
             }
         }
         if (restoreIdx >= 0) {
-            // The list listener refreshes the details and history panels.
             requestList.setSelectedIndex(restoreIdx);
         } else {
             requestList.clearSelection();
@@ -505,10 +461,6 @@ public class AdminMenuFrame extends JFrame {
         return currentRequests.get(idx);
     }
 
-    /**
-     * Updates the status of any request (any type), including cancellation.
-     * Recorded in staff history under the admin's ID plus the admin action log.
-     */
     private void updateSelectedRequestStatus() {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
@@ -544,9 +496,9 @@ public class AdminMenuFrame extends JFrame {
         buttons.setBackground(Color.WHITE);
         buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
         JButton saveBtn = createDarkBlueButton("Save Status");
-        JButton closeBtn = createDarkBlueButton("Close");
-        buttons.add(closeBtn);
+        JButton cancelBtn = createDarkBlueButton("Cancel");
         buttons.add(saveBtn);
+        buttons.add(cancelBtn);
         dialog.add(buttons, BorderLayout.SOUTH);
         saveBtn.addActionListener(e -> {
             String newStatus = (String) statusBox.getSelectedItem();
@@ -563,7 +515,7 @@ public class AdminMenuFrame extends JFrame {
             JOptionPane.showMessageDialog(dialog, "Status updated to " + newStatus + ".");
             dialog.dispose();
         });
-        closeBtn.addActionListener(e -> dialog.dispose());
+        cancelBtn.addActionListener(e -> dialog.dispose());
         dialog.pack();
         dialog.setMinimumSize(new Dimension(440, 300));
         dialog.setLocationRelativeTo(this);
@@ -583,7 +535,6 @@ public class AdminMenuFrame extends JFrame {
         return currentRequests.get(idx).getRequestId();
     }
 
-    /** Shows the timeline for the selected request, or a placeholder when nothing is selected. */
     private void showSelectedRequestHistory() {
         requestHistoryPanel.removeAll();
         int idx = requestList.getSelectedIndex();
@@ -597,7 +548,6 @@ public class AdminMenuFrame extends JFrame {
         requestHistoryPanel.repaint();
     }
 
-    /** Timeline of one request's stored history, oldest first, in its own scroll pane. */
     private JComponent buildAdminRequestTimeline(AssistanceRequest req) {
         List<TimelineEvent> events = loadRequestTimeline(req);
         JPanel timeline = new JPanel();
@@ -613,7 +563,10 @@ public class AdminMenuFrame extends JFrame {
         } else {
             for (int i = 0; i < events.size(); i++) {
                 TimelineEvent ev = events.get(i);
-                timeline.add(buildTimelineRow(ev.action, ev.at, ev.detail, i == events.size() - 1));
+                timeline.add(buildTimelineRow(ev.action, ev.at, ev.detail));
+                if (i < events.size() - 1) {
+                    timeline.add(Box.createVerticalStrut(10));
+                }
             }
         }
         timeline.add(Box.createVerticalGlue());
@@ -623,11 +576,6 @@ public class AdminMenuFrame extends JFrame {
         return scroll;
     }
 
-    /**
-     * Splits "Status changed to X by ADM1000" into the short title and the admin line,
-     * so the admin entries match the staff entries. Older entries stored the admin's name
-     * after "by admin ", which is shown as "Admin: name".
-     */
     private String[] splitAdminAction(String action) {
         if (action == null || !action.startsWith("Status changed to ") || !action.contains(" by ")) {
             return new String[]{action, null};
@@ -641,7 +589,6 @@ public class AdminMenuFrame extends JFrame {
         return new String[]{title, "Admin ID: " + who};
     }
 
-    /** Stored resident updates and staff processing records for one request, oldest first. */
     private List<TimelineEvent> loadRequestTimeline(AssistanceRequest req) {
         String requestId = req.getRequestId();
         List<TimelineEvent> events = new ArrayList<>();
@@ -657,20 +604,16 @@ public class AdminMenuFrame extends JFrame {
                         "Status changed to " + entry.getStatus(), "Staff ID: " + entry.getStaffId()));
             }
         }
-        // Leftover rows can share the ID of a request that was deleted and later
-        // re-created (e.g. the seeded REQ4000). Never show an event older than the request.
         events.removeIf(ev -> !happenedAtOrAfter(ev.at, req));
         events.sort((a, b) -> a.at.compareTo(b.at));
         return events;
     }
 
-    /** False only when the stored event is older than the request itself (a stale row from a reused ID). */
     private static boolean happenedAtOrAfter(java.time.LocalDateTime eventAt, AssistanceRequest req) {
         java.time.LocalDateTime submitted = req.getDateRequested();
         return eventAt == null || submitted == null || !eventAt.isBefore(submitted);
     }
 
-    /** A single timeline entry; detail is null when the stored record has no extra information. */
     private static class TimelineEvent {
         final java.time.LocalDateTime at;
         final String action;
@@ -683,7 +626,6 @@ public class AdminMenuFrame extends JFrame {
         }
     }
 
-    /** A panel with a title bar above its content, styled like the other admin panel titles. */
     private JPanel createTitledPanel(String title, JComponent content) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
@@ -732,26 +674,44 @@ public class AdminMenuFrame extends JFrame {
         card.add(headerRow);
         card.add(Box.createVerticalStrut(18));
 
-        JPanel grid = new JPanel(new GridLayout(2, 2, 32, 14));
+        String submitterContact = null;
+        for (User u : fileManager.readUsers()) {
+            if (u instanceof Resident && req.getResidentId() != null
+                    && req.getResidentId().equals(((Resident) u).getResidentId())) {
+                submitterContact = ((Resident) u).getContactNo();
+                break;
+            }
+        }
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+
+        // Row 1: Resident ID | Contact No
         grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
-        grid.add(makeFieldBlock("Type", req.getType()));
-        String locationVal = req.getLocation();
+        grid.add(makeFieldBlock("Contact No", submitterContact == null ? "-" : submitterContact));
+
+        // Row 2: Date Needed | Date Submitted
+        grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
+        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+
+        // Row 3: Route & No. of Passengers (for Transpo) OR Location (for Food & Medical)
         if (req instanceof TransportationRequest) {
             TransportationRequest tr = (TransportationRequest) req;
-            locationVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
+            String routeVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
+            grid.add(makeFieldBlock("Route", routeVal.isEmpty() ? "-" : routeVal));
+            grid.add(makeFieldBlock("No. of Passengers", String.valueOf(tr.getPassengerCount())));
+        } else {
+            String locationVal = req.getLocation();
+            grid.add(makeFieldBlock("Location", locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
         }
-        grid.add(makeFieldBlock(req instanceof TransportationRequest ? "Route" : "Location",
-                locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
-        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
-        card.add(makeDivider());
-        card.add(Box.createVerticalStrut(12));
 
         if (req instanceof MedicalRequest) {
+            card.add(makeDivider());
+            card.add(Box.createVerticalStrut(12));
             card.add(makeSectionTitle("Requested Items"));
             card.add(Box.createVerticalStrut(8));
             for (MedicalItem item : ((MedicalRequest) req).getMedicalItems()) {
@@ -759,17 +719,14 @@ public class AdminMenuFrame extends JFrame {
                 card.add(Box.createVerticalStrut(6));
             }
         } else if (req instanceof FoodRequest) {
+            card.add(makeDivider());
+            card.add(Box.createVerticalStrut(12));
             card.add(makeSectionTitle("Requested Items"));
             card.add(Box.createVerticalStrut(8));
             for (FoodItem item : ((FoodRequest) req).getFoodItems()) {
                 card.add(makeItemRow(item.getName(), item.getQuantity() + " " + item.getUnit()));
                 card.add(Box.createVerticalStrut(6));
             }
-        } else if (req instanceof TransportationRequest) {
-            TransportationRequest tr = (TransportationRequest) req;
-            card.add(makeSectionTitle("Transport Details"));
-            card.add(Box.createVerticalStrut(8));
-            card.add(makeItemRow("Passengers", String.valueOf(tr.getPassengerCount())));
         }
 
         card.add(Box.createVerticalStrut(10));
@@ -856,7 +813,6 @@ public class AdminMenuFrame extends JFrame {
         int confirm = JOptionPane.showConfirmDialog(this, "Permanently delete request " + req.getRequestId() + "?",
                 "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
-            // History recorded inside Admin.deleteRequest before removal.
             admin.deleteRequest(req);
             logAdminAction("Deleted request " + req.getRequestId());
             refreshRequestList(requestSearchField.getText().trim());
@@ -923,7 +879,6 @@ public class AdminMenuFrame extends JFrame {
         note.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(note);
 
-        // Address and contact apply to residents only: grey them out for every other role.
         Runnable applyRoleRules = () -> {
             boolean resident = "Resident".equals(roleBox.getSelectedItem());
             addressField.setEnabled(resident);
@@ -984,10 +939,6 @@ public class AdminMenuFrame extends JFrame {
             } else {
                 newUser = new TransportationStaff(name, pass, fileManager.nextStaffId());
             }
-
-            // Store the typed address and contact for every role, not only residents.
-            newUser.setAddress(address);
-            newUser.setContactNo(contact);
             if (newUser instanceof Staff) {
                 ((Staff) newUser).setAssignedType(getAssignedTypeForRole(role));
             }
@@ -1058,16 +1009,11 @@ public class AdminMenuFrame extends JFrame {
             }
             panel.revalidate();
             panel.repaint();
-            dialogPackSafe();
         };
 
-        final JDialog[] dialogRef = new JDialog[1];
-        // Residents may not change role, so the selector is locked for them.
         roleBox.setEnabled(!(u instanceof Resident));
         roleBox.addActionListener(e -> {
             String selectedRole = (String) roleBox.getSelectedItem();
-            // Only regenerate the ID when the new role needs a different prefix,
-            // so a staff-to-staff change keeps the existing ID.
             String currentId = userIdField.getText().trim();
             if (!currentId.toUpperCase().startsWith(getUserIdPrefix(selectedRole))) {
                 userIdField.setText(createUserIdForRole(selectedRole));
@@ -1077,7 +1023,6 @@ public class AdminMenuFrame extends JFrame {
         rebuildFields.run();
 
         JDialog dialog = new JDialog(this, "Manage User", true);
-        dialogRef[0] = dialog;
         dialog.setLayout(new BorderLayout());
         JScrollPane scroll = new JScrollPane(panel);
         scroll.setBorder(null);
@@ -1089,10 +1034,8 @@ public class AdminMenuFrame extends JFrame {
                 BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
                 BorderFactory.createEmptyBorder(10, 16, 10, 16)));
 
-        // Delete uses the same dark-blue theme as the rest of the admin interface.
         JButton deleteBtn = createDarkBlueButton("Delete User");
 
-        // Cancel + Save on the right
         JPanel rightBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightBtns.setOpaque(false);
         JButton cancelBtn = new JButton("Cancel");
@@ -1116,7 +1059,6 @@ public class AdminMenuFrame extends JFrame {
             String newName = nameField.getText().trim();
             String newPassword = passwordField.getText().trim();
             String newUserId = userIdField.getText().trim();
-            // Enforced here as well as in the UI: a Resident can never change role.
             String newRole = (u instanceof Resident) ? "Resident" : (String) roleBox.getSelectedItem();
             if (newName.isEmpty() || newPassword.isEmpty() || newUserId.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog, "Name, password, and UserID are required.",
@@ -1178,7 +1120,6 @@ public class AdminMenuFrame extends JFrame {
             dialog.dispose();
         });
         deleteBtn.addActionListener(e -> {
-            // Stay open if the delete was blocked (e.g. last remaining admin).
             if (deleteUser(u)) dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -1187,10 +1128,6 @@ public class AdminMenuFrame extends JFrame {
         dialog.setMinimumSize(new Dimension(520, 420));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
-    }
-
-    private void dialogPackSafe() {
-        // no-op helper for rebuild; dialog size is fixed
     }
 
     private String getAssignedTypeForRole(String role) {
@@ -1216,7 +1153,6 @@ public class AdminMenuFrame extends JFrame {
         return user.getUserId();
     }
 
-    /** Number of Admin accounts currently stored. */
     private int countAdmins() {
         int count = 0;
         for (User existing : fileManager.readUsers()) {
@@ -1225,9 +1161,7 @@ public class AdminMenuFrame extends JFrame {
         return count;
     }
 
-    /** Deletes the user after confirmation. Returns true only if the user was deleted. */
     private boolean deleteUser(User u) {
-        // The system must always keep at least one Admin account.
         if (u instanceof Admin && countAdmins() <= 1) {
             JOptionPane.showMessageDialog(this,
                     "You cannot delete the last Admin account. At least one Admin must remain.",
@@ -1245,13 +1179,6 @@ public class AdminMenuFrame extends JFrame {
         return true;
     }
 
-    private void viewSelectedUserHistory() {
-        User u = getSelectedUser();
-        if (u == null) return;
-        showHistoryDialog(u);
-    }
-
-    /** Shows the logged-in admin's own recorded actions. */
     private void viewOwnAdminHistory() {
         showHistoryDialog(admin);
     }
@@ -1315,8 +1242,6 @@ public class AdminMenuFrame extends JFrame {
                 body.removeAll();
                 body.add(empty, BorderLayout.CENTER);
             }
-        } else if (u instanceof Resident) {
-            body.add(buildResidentRequestHistory((Resident) u), BorderLayout.CENTER);
         } else if (u instanceof Admin) {
             DefaultTableModel model = new DefaultTableModel(
                     new Object[]{"Date and Time", "Admin Action"}, 0) {
@@ -1357,174 +1282,41 @@ public class AdminMenuFrame extends JFrame {
         dialog.setVisible(true);
     }
 
-    /** Resident request history: all requests on the left, selected request details and timeline on the right. */
-    private JComponent buildResidentRequestHistory(Resident resident) {
-        String residentId = resident.getResidentId();
-        List<AssistanceRequest> myRequests = new ArrayList<>();
-        for (AssistanceRequest req : requestManager.getAllRequests()) {
-            if (req.getResidentId().equals(residentId)) myRequests.add(req);
-        }
-        List<ResidentRequestHistory> allUpdates = fileManager.readResidentRequestHistory();
+    private JPanel buildTimelineRow(String action, java.time.LocalDateTime at, String detail) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(new Color(248, 250, 252));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Left sidebar
-        DefaultListModel<String> reqModel = new DefaultListModel<>();
-        for (AssistanceRequest req : myRequests) {
-            reqModel.addElement(req.getRequestId() + " \u2014 " + req.getType() + " \u00B7 " + req.getStatus());
-        }
-        JList<String> reqList = new JList<>(reqModel);
-        styleList(reqList);
-
-        JLabel sidebarHeading = new JLabel("ALL REQUESTS (" + myRequests.size() + ")");
-        sidebarHeading.setFont(new Font("SansSerif", Font.BOLD, 11));
-        sidebarHeading.setForeground(new Color(100, 116, 139));
-        sidebarHeading.setBorder(BorderFactory.createEmptyBorder(12, 12, 10, 12));
-        sidebarHeading.setOpaque(true);
-        sidebarHeading.setBackground(new Color(248, 250, 252));
-
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setBackground(Color.WHITE);
-        sidebar.add(sidebarHeading, BorderLayout.NORTH);
-        if (myRequests.isEmpty()) {
-            sidebar.add(makeEmptyState("You have no requests yet."), BorderLayout.CENTER);
-        } else {
-            JScrollPane listScroll = new JScrollPane(reqList);
-            listScroll.setBorder(null);
-            sidebar.add(listScroll, BorderLayout.CENTER);
-        }
-
-        // Right panel
-        JPanel details = new JPanel(new BorderLayout());
-        details.setBackground(Color.WHITE);
-        if (myRequests.isEmpty()) {
-            details.add(makeEmptyState("Select a request to view its details."), BorderLayout.CENTER);
-        } else {
-            reqList.addListSelectionListener(e -> {
-                if (e.getValueIsAdjusting()) return;
-                int idx = reqList.getSelectedIndex();
-                if (idx >= 0 && idx < myRequests.size()) {
-                    showResidentRequestDetail(details, myRequests.get(idx), allUpdates, residentId);
-                }
-            });
-            reqList.setSelectedIndex(0);
-        }
-
-        return makeSplit(sidebar, details, 280);
-    }
-
-    /** Renders the selected request's heading, details and its own activity timeline. */
-    private void showResidentRequestDetail(JPanel container, AssistanceRequest req,
-                                           List<ResidentRequestHistory> allUpdates, String residentId) {
-        container.removeAll();
-
-        JPanel top = new JPanel();
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.setBackground(Color.WHITE);
-        top.setBorder(BorderFactory.createEmptyBorder(20, 24, 12, 24));
-
-        JLabel idLbl = new JLabel(req.getRequestId());
-        idLbl.setFont(new Font("SansSerif", Font.BOLD, 18));
-        idLbl.setForeground(DARK_BLUE);
-        idLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel typeLbl = new JLabel("Type: " + req.getType());
-        typeLbl.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        typeLbl.setForeground(new Color(71, 85, 105));
-        typeLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel statusLbl = new JLabel("Status: " + req.getStatus());
-        statusLbl.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        statusLbl.setForeground(new Color(71, 85, 105));
-        statusLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        top.add(idLbl);
-        top.add(Box.createVerticalStrut(6));
-        top.add(typeLbl);
-        top.add(Box.createVerticalStrut(2));
-        top.add(statusLbl);
-        top.add(Box.createVerticalStrut(16));
-        top.add(makeDivider());
-        top.add(Box.createVerticalStrut(12));
-
-        JLabel timelineTitle = new JLabel("Activity Timeline");
-        timelineTitle.setFont(new Font("SansSerif", Font.BOLD, 13));
-        timelineTitle.setForeground(DARK_BLUE);
-        timelineTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        top.add(timelineTitle);
-
-        // Only this resident's events for this request, oldest first.
-        List<ResidentRequestHistory> events = new ArrayList<>();
-        for (ResidentRequestHistory entry : allUpdates) {
-            if (entry.getResidentId().equals(residentId) && entry.getRequestId().equals(req.getRequestId())
-                    && happenedAtOrAfter(entry.getUpdatedAt(), req)) {
-                events.add(entry);
-            }
-        }
-        events.sort(java.util.Comparator.comparing(ResidentRequestHistory::getUpdatedAt));
-
-        JPanel timeline = new JPanel();
-        timeline.setLayout(new BoxLayout(timeline, BoxLayout.Y_AXIS));
-        timeline.setBackground(Color.WHITE);
-        timeline.setBorder(BorderFactory.createEmptyBorder(12, 24, 16, 24));
-        if (events.isEmpty()) {
-            JLabel none = new JLabel("No updates recorded for this request.");
-            none.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            none.setForeground(new Color(148, 163, 184));
-            none.setAlignmentX(Component.LEFT_ALIGNMENT);
-            timeline.add(none);
-        } else {
-            for (int i = 0; i < events.size(); i++) {
-                timeline.add(buildTimelineRow(events.get(i), i == events.size() - 1));
-            }
-        }
-        timeline.add(Box.createVerticalGlue());
-
-        JScrollPane timelineScroll = new JScrollPane(timeline);
-        timelineScroll.setBorder(null);
-        timelineScroll.getVerticalScrollBar().setUnitIncrement(16);
-
-        container.setLayout(new BorderLayout());
-        container.add(top, BorderLayout.NORTH);
-        container.add(timelineScroll, BorderLayout.CENTER);
-        container.revalidate();
-        container.repaint();
-    }
-
-    private JPanel buildTimelineRow(ResidentRequestHistory entry, boolean last) {
-        return buildTimelineRow(entry.getAction(), entry.getUpdatedAt(), null, last);
-    }
-
-    /** One timeline entry: a dark blue marker, the action, the recorded time, and optional detail text. */
-    private JPanel buildTimelineRow(String action, java.time.LocalDateTime at, String detail, boolean last) {
-        JPanel row = new JPanel(new BorderLayout(14, 0));
-        row.setOpaque(false);
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.add(new TimelineMarker(!last), BorderLayout.WEST);
-
-        JPanel text = new JPanel();
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.setOpaque(false);
-        text.setBorder(BorderFactory.createEmptyBorder(0, 0, last ? 0 : 18, 0));
-        JLabel actionLbl = new JLabel(action);
+        JLabel actionLbl = new JLabel(action == null ? "" : action);
         actionLbl.setFont(new Font("SansSerif", Font.BOLD, 13));
         actionLbl.setForeground(new Color(15, 23, 42));
         actionLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel whenLbl = new JLabel(at.format(AssistanceRequest.DT_FMT));
+        card.add(actionLbl);
+
+        String formattedTime = (at != null) ? at.format(AssistanceRequest.DT_FMT) : "";
+        JLabel whenLbl = new JLabel(formattedTime);
         whenLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
         whenLbl.setForeground(new Color(100, 116, 139));
         whenLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        text.add(actionLbl);
-        text.add(Box.createVerticalStrut(3));
-        text.add(whenLbl);
+        card.add(Box.createVerticalStrut(2));
+        card.add(whenLbl);
+
         if (detail != null && !detail.isEmpty()) {
             JLabel detailLbl = new JLabel(detail);
             detailLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
             detailLbl.setForeground(new Color(100, 116, 139));
             detailLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-            text.add(Box.createVerticalStrut(2));
-            text.add(detailLbl);
+            card.add(Box.createVerticalStrut(2));
+            card.add(detailLbl);
         }
-        row.add(text, BorderLayout.CENTER);
 
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-        return row;
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+        return card;
     }
 
     private JLabel makeEmptyState(String text) {
@@ -1534,38 +1326,7 @@ public class AdminMenuFrame extends JFrame {
         return l;
     }
 
-    /** Dot marker with a connecting line down to the next timeline entry. */
-    private static class TimelineMarker extends JComponent {
-        private static final long serialVersionUID = 1L;
-        private final boolean drawLine;
-
-        TimelineMarker(boolean drawLine) {
-            this.drawLine = drawLine;
-            setOpaque(false);
-            setPreferredSize(new Dimension(16, 10));
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int cx = getWidth() / 2;
-                if (drawLine) {
-                    g2.setColor(new Color(170, 186, 210));
-                    g2.setStroke(new BasicStroke(2f));
-                    g2.drawLine(cx, 14, cx, getHeight());
-                }
-                g2.setColor(DARK_BLUE);
-                g2.fillOval(cx - 5, 4, 10, 10);
-            } finally {
-                g2.dispose();
-            }
-        }
-    }
-
     private Path adminHistoryPath() {
-        // Single persistent data folder at project root (see FileManager.resolveDataDir()).
         return Paths.get(FileManager.resolveDataDir(), "admin_history.txt");
     }
 
@@ -1612,5 +1373,4 @@ public class AdminMenuFrame extends JFrame {
         table.setShowVerticalLines(false);
         table.setFillsViewportHeight(true);
     }
-
 }

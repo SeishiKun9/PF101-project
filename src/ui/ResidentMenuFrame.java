@@ -68,7 +68,6 @@ public class ResidentMenuFrame extends JFrame {
         menuBar.add(residentMenu);
         setJMenuBar(menuBar);
 
-
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(DARK_BLUE);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 28, 16, 28));
@@ -103,7 +102,6 @@ public class ResidentMenuFrame extends JFrame {
 
         add(headerPanel, BorderLayout.NORTH);
 
-
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.setBackground(new Color(245, 247, 250));
         toolbar.setBorder(BorderFactory.createEmptyBorder(12, 20, 8, 20));
@@ -133,13 +131,11 @@ public class ResidentMenuFrame extends JFrame {
         toolbar.add(actionsLeft, BorderLayout.WEST);
         toolbar.add(searchRight, BorderLayout.EAST);
 
-    
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         splitPane.setDividerLocation(280);
         splitPane.setDividerSize(4);
         splitPane.setBorder(null);
         splitPane.setContinuousLayout(true);
-
 
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.setBackground(Color.WHITE);
@@ -167,7 +163,6 @@ public class ResidentMenuFrame extends JFrame {
         leftPanel.add(listTitle, BorderLayout.NORTH);
         leftPanel.add(listScroll, BorderLayout.CENTER);
 
-
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(Color.WHITE);
 
@@ -186,8 +181,6 @@ public class ResidentMenuFrame extends JFrame {
 
         JScrollPane detailsScroll = new JScrollPane(detailsPanel);
         detailsScroll.setBorder(null);
-        detailsScroll.getViewport().setBackground(Color.WHITE);
-
 
         styleActionButton(updateReqBtn, false);
         styleActionButton(cancelReqBtn, false);
@@ -287,7 +280,6 @@ public class ResidentMenuFrame extends JFrame {
         if (idx >= 0 && idx < currentRequests.size()) {
             req = currentRequests.get(idx);
         }
-        // Update and cancel are both allowed only while the request is Pending.
         boolean pending = req != null && isPending(req);
         styleActionButton(updateReqBtn, pending);
         styleActionButton(cancelReqBtn, pending);
@@ -333,30 +325,35 @@ public class ResidentMenuFrame extends JFrame {
         card.add(headerRow);
         card.add(Box.createVerticalStrut(18));
 
-        JPanel grid = new JPanel(new GridLayout(2, 2, 32, 14));
+        JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
 
-        grid.add(makeFieldBlock("Type", req.getType()));
+      
+        grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
+        grid.add(makeFieldBlock("Contact No", resident.getContactNo()));
+
+
         grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
-        String locationVal = req.getLocation();
+        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+
+      
         if (req instanceof TransportationRequest) {
             TransportationRequest tr = (TransportationRequest) req;
-            locationVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
+            String routeVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
+            grid.add(makeFieldBlock("Route", routeVal.isEmpty() ? "-" : routeVal));
+            grid.add(makeFieldBlock("No. of Passengers", String.valueOf(tr.getPassengerCount())));
+        } else {
+            String locationVal = req.getLocation();
+            grid.add(makeFieldBlock("Location", locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
         }
-        grid.add(makeFieldBlock(
-                req instanceof TransportationRequest ? "Route" : "Location",
-                locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
-        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
 
-      
-        card.add(makeDivider());
-        card.add(Box.createVerticalStrut(12));
-
         if (req instanceof MedicalRequest) {
+            card.add(makeDivider());
+            card.add(Box.createVerticalStrut(12));
             MedicalRequest medical = (MedicalRequest) req;
             card.add(makeSectionTitle("Requested Items"));
             card.add(Box.createVerticalStrut(8));
@@ -365,6 +362,8 @@ public class ResidentMenuFrame extends JFrame {
                 card.add(Box.createVerticalStrut(6));
             }
         } else if (req instanceof FoodRequest) {
+            card.add(makeDivider());
+            card.add(Box.createVerticalStrut(12));
             FoodRequest food = (FoodRequest) req;
             card.add(makeSectionTitle("Requested Items"));
             card.add(Box.createVerticalStrut(8));
@@ -372,18 +371,13 @@ public class ResidentMenuFrame extends JFrame {
                 card.add(makeItemRow(item.getName(), item.getQuantity() + " " + item.getUnit()));
                 card.add(Box.createVerticalStrut(6));
             }
-        } else if (req instanceof TransportationRequest) {
-            TransportationRequest tr = (TransportationRequest) req;
-            card.add(makeSectionTitle("Transport Details"));
-            card.add(Box.createVerticalStrut(8));
-            card.add(makeItemRow("Passengers", String.valueOf(tr.getPassengerCount())));
         }
 
         card.add(Box.createVerticalStrut(10));
         card.add(makeDivider());
         card.add(Box.createVerticalStrut(12));
 
-        // Reason / additional details
+        // Details of request
         card.add(makeSectionTitle("Details of Request"));
         card.add(Box.createVerticalStrut(6));
         String reason = req.getAdditionalDetails();
@@ -492,7 +486,6 @@ public class ResidentMenuFrame extends JFrame {
         return currentRequests.get(idx);
     }
 
-    /** True only for this resident's own request whose status is still Pending. */
     private boolean isPending(AssistanceRequest req) {
         return "Pending".equalsIgnoreCase(req.getStatus())
                 && resident.getResidentId().equals(req.getResidentId());
@@ -509,7 +502,6 @@ public class ResidentMenuFrame extends JFrame {
         updateRequestDialog(req);
     }
 
-    /** Re-reads the stored request so a status change made while the dialog was open is caught. */
     private AssistanceRequest findCurrentRequest(String requestId) {
         for (AssistanceRequest r : requestManager.getAllRequests()) {
             if (r.getRequestId().equals(requestId)) return r;
@@ -523,7 +515,6 @@ public class ResidentMenuFrame extends JFrame {
         else if (original instanceof MedicalRequest) type = "Medical";
         else type = "Transportation";
 
-        // Pre-fill the form from the stored request.
         RequestFormFields fields = new RequestFormFields();
         fields.setFromRequest(original);
         if (original instanceof FoodRequest) {
@@ -537,7 +528,6 @@ public class ResidentMenuFrame extends JFrame {
             fields.passengerCountField.setText(String.valueOf(tr.getPassengerCount()));
         }
 
-        // The type is fixed for an update: a label instead of the type picker.
         JLabel typeLbl = new JLabel(type);
         JPanel panel = new JPanel();
         Runnable rebuildForm = () -> rebuildRequestForm(panel, type, fields, typeLbl);
@@ -564,7 +554,6 @@ public class ResidentMenuFrame extends JFrame {
         saveButton.addActionListener(e -> {
             if (!hasRequiredFields(type, fields)) return;
 
-            // Re-check the stored status: staff may have changed it while this dialog was open.
             AssistanceRequest latest = findCurrentRequest(original.getRequestId());
             if (latest == null || !isPending(latest)) {
                 JOptionPane.showMessageDialog(dialog,
@@ -673,13 +662,11 @@ public class ResidentMenuFrame extends JFrame {
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
 
-        // Show type picker only when submitting (combo box). On update, only the heading.
         if (!(typeInput instanceof JLabel)) {
             addFormRow(panel, "Assistance Type", typeInput);
             panel.add(Box.createVerticalStrut(16));
         }
 
-        // Section heading
         JLabel heading = new JLabel(toAssistanceLabel(type).toUpperCase());
         heading.setFont(new Font("SansSerif", Font.BOLD, 14));
         heading.setForeground(DARK_BLUE);
@@ -704,7 +691,6 @@ public class ResidentMenuFrame extends JFrame {
             }
             for (ItemFormRow row : fields.itemRows) row.setUnits(units);
 
-            // Item header + add/remove
             JPanel itemHeader = new JPanel(new BorderLayout());
             itemHeader.setOpaque(false);
             itemHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -725,7 +711,6 @@ public class ResidentMenuFrame extends JFrame {
             panel.add(itemHeader);
             panel.add(Box.createVerticalStrut(8));
 
-            // Column headers
             JPanel colHeader = new JPanel(new GridLayout(1, 3, 12, 0));
             colHeader.setOpaque(false);
             colHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -739,7 +724,6 @@ public class ResidentMenuFrame extends JFrame {
             panel.add(colHeader);
             panel.add(Box.createVerticalStrut(6));
 
-            // Item rows
             for (ItemFormRow row : fields.itemRows) {
                 JPanel itemRow = new JPanel(new GridLayout(1, 3, 12, 0));
                 itemRow.setOpaque(false);
@@ -1054,7 +1038,6 @@ public class ResidentMenuFrame extends JFrame {
                 "Confirm Cancel", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             try {
-                // Ownership + pending-status enforced inside Resident.cancelRequest.
                 resident.cancelRequest(req);
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(),

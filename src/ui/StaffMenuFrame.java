@@ -10,7 +10,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class StaffMenuFrame extends JFrame {
     private final Staff staff;
     private final FileManager fileManager = new FileManager();
@@ -89,7 +88,6 @@ public class StaffMenuFrame extends JFrame {
         headerPanel.add(rightHeader, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-  
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.setBackground(new Color(245, 247, 250));
         toolbar.setBorder(BorderFactory.createEmptyBorder(12, 20, 8, 20));
@@ -120,7 +118,6 @@ public class StaffMenuFrame extends JFrame {
         toolbar.add(deptLbl, BorderLayout.WEST);
         toolbar.add(searchRight, BorderLayout.EAST);
 
-        // Split
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         splitPane.setDividerLocation(280);
         splitPane.setDividerSize(4);
@@ -178,7 +175,6 @@ public class StaffMenuFrame extends JFrame {
         detailsWrap.add(detailsScroll, BorderLayout.CENTER);
         detailsWrap.add(bottomActions, BorderLayout.SOUTH);
 
-   
         historyPanel.setBackground(Color.WHITE);
         historyPanel.add(makeEmptyState("Select a request to view its history."), BorderLayout.CENTER);
         JPanel historyWrap = new JPanel(new BorderLayout());
@@ -268,7 +264,6 @@ public class StaffMenuFrame extends JFrame {
         String claimLabel = "Claim";
         if (idx >= 0 && idx < currentRequests.size()) {
             AssistanceRequest sel = currentRequests.get(idx);
-            // List is already restricted to own assigned type; double-check anyway.
             hasSel = staff.canHandle(sel);
             String st = sel.getStatus();
             boolean cancelled = st != null && "Cancelled".equalsIgnoreCase(st);
@@ -277,25 +272,19 @@ public class StaffMenuFrame extends JFrame {
             String assignee = sel.getAssignedStaffId();
             boolean unassigned = assignee == null || assignee.trim().isEmpty();
             boolean takenByOther = hasSel && !unassigned && !mine;
-            // Rule: must claim first before updating. Only the claimer can update.
-            // Completed and Cancelled are terminal - never updatable.
-            boolean terminal = cancelled
-                    || (st != null && "Completed".equalsIgnoreCase(st));
+            boolean terminal = cancelled || (st != null && "Completed".equalsIgnoreCase(st));
             canUpdate = mine && !terminal;
             if (hasSel) {
                 if (mine) {
-                    // Once claimed, the request stays with this staff member until it is finished.
                     canClaim = false;
                     claimLabel = "Claimed";
                 } else if (takenByOther) {
                     canClaim = false;
                     claimLabel = "Taken by " + assignee.trim();
                 } else if (unassigned && pending) {
-                    // Strict: only Pending requests can be claimed.
                     canClaim = true;
                     claimLabel = "Claim";
                 } else {
-                    // Unassigned but not Pending (Completed/Cancelled/In Progress) -> locked.
                     canClaim = false;
                     claimLabel = "Claim";
                 }
@@ -304,10 +293,8 @@ public class StaffMenuFrame extends JFrame {
         claimBtn.setText(claimLabel);
         styleActionButton(claimBtn, canClaim);
         styleActionButton(updateStatusBtn, canUpdate);
-        // Delete is admin-only; staff UI has no delete button.
     }
 
-    /** Shows the history timeline for the selected (own-type) request, oldest first. */
     private void showSelectedHistory() {
         historyPanel.removeAll();
         AssistanceRequest req = null;
@@ -359,43 +346,44 @@ public class StaffMenuFrame extends JFrame {
         card.add(headerRow);
         card.add(Box.createVerticalStrut(18));
 
-        JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
-        grid.setOpaque(false);
-        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
-        grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
-        String locationVal = req.getLocation();
-        if (req instanceof TransportationRequest) {
-            TransportationRequest tr = (TransportationRequest) req;
-            locationVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
-        }
-        grid.add(makeFieldBlock(req instanceof TransportationRequest ? "Route" : "Location",
-                locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
-        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
-        String handler = req.getAssignedStaffId();
-        if (handler == null || handler.trim().isEmpty()) handler = "Unassigned";
-        else if (handler.equals(staff.getStaffId())) handler = handler + " (You)";
-        grid.add(makeFieldBlock("Handled By", handler));
-        // Submitter info looked up from users file (name + contact) so staff
-        // can see who filed the request, not just the resident ID.
-        String submitterName = null;
         String submitterContact = null;
         for (User u : fileManager.readUsers()) {
             if (u instanceof Resident && req.getResidentId() != null
                     && req.getResidentId().equals(((Resident) u).getResidentId())) {
-                submitterName = u.getFullName();
                 submitterContact = ((Resident) u).getContactNo();
                 break;
             }
         }
-        grid.add(makeFieldBlock("Submitted By", submitterName == null ? req.getResidentId() : submitterName));
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Row 1: Resident ID | Contact No
+        grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
         grid.add(makeFieldBlock("Contact No", submitterContact == null ? "-" : submitterContact));
+
+        // Row 2: Date Needed | Date Submitted
+        grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
+        grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
+
+        // Row 3: Route & No. of Passengers (for Transpo) OR Location (for Food & Medical)
+        if (req instanceof TransportationRequest) {
+            TransportationRequest tr = (TransportationRequest) req;
+            String routeVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
+            grid.add(makeFieldBlock("Route", routeVal.isEmpty() ? "-" : routeVal));
+            grid.add(makeFieldBlock("No. of Passengers", String.valueOf(tr.getPassengerCount())));
+        } else {
+            String locationVal = req.getLocation();
+            grid.add(makeFieldBlock("Location", locationVal == null || locationVal.isEmpty() ? "-" : locationVal));
+        }
+
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
-        card.add(makeDivider());
-        card.add(Box.createVerticalStrut(12));
 
         if (req instanceof MedicalRequest) {
+            card.add(makeDivider());
+            card.add(Box.createVerticalStrut(12));
             card.add(makeSectionTitle("Requested Items"));
             card.add(Box.createVerticalStrut(8));
             for (MedicalItem item : ((MedicalRequest) req).getMedicalItems()) {
@@ -403,17 +391,14 @@ public class StaffMenuFrame extends JFrame {
                 card.add(Box.createVerticalStrut(6));
             }
         } else if (req instanceof FoodRequest) {
+            card.add(makeDivider());
+            card.add(Box.createVerticalStrut(12));
             card.add(makeSectionTitle("Requested Items"));
             card.add(Box.createVerticalStrut(8));
             for (FoodItem item : ((FoodRequest) req).getFoodItems()) {
                 card.add(makeItemRow(item.getName(), item.getQuantity() + " " + item.getUnit()));
                 card.add(Box.createVerticalStrut(6));
             }
-        } else if (req instanceof TransportationRequest) {
-            TransportationRequest tr = (TransportationRequest) req;
-            card.add(makeSectionTitle("Transport Details"));
-            card.add(Box.createVerticalStrut(8));
-            card.add(makeItemRow("Passengers", String.valueOf(tr.getPassengerCount())));
         }
 
         card.add(Box.createVerticalStrut(10));
@@ -614,7 +599,6 @@ public class StaffMenuFrame extends JFrame {
         saveBtn.addActionListener(e -> {
             String newStatus = (String) statusBox.getSelectedItem();
             try {
-                // Type guard + ownership + history inside Staff.updateRequestStatus.
                 staff.updateRequestStatus(req, newStatus);
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 JOptionPane.showMessageDialog(dialog, ex.getMessage(),
@@ -640,33 +624,35 @@ public class StaffMenuFrame extends JFrame {
         return lbl;
     }
 
-    /** Timeline of stored history for one own-type request, oldest first. Never fabricated. */
     private JComponent buildStaffRequestTimeline(AssistanceRequest req) {
         String requestId = req.getRequestId();
         List<TimelineEvent> events = new ArrayList<>();
-        // Only own-type requests reach this method, so the request ID alone selects the entries.
+
         for (ResidentRequestHistory entry : fileManager.readResidentRequestHistory()) {
             if (requestId.equals(entry.getRequestId())) {
-                events.add(new TimelineEvent(entry.getUpdatedAt(), entry.getAction(), null));
+                String[] shown = splitAdminAction(entry.getAction());
+                events.add(new TimelineEvent(entry.getUpdatedAt(), shown[0], shown[1]));
             }
         }
         for (StaffRequestHistory entry : fileManager.readStaffRequestHistory()) {
             if (requestId.equals(entry.getRequestId())
                     && staff.getAssignedType().equalsIgnoreCase(entry.getRequestType())) {
                 events.add(new TimelineEvent(entry.getProcessedAt(),
-                        "Status: " + entry.getStatus(), "Staff ID: " + entry.getStaffId()));
+                        "Status changed to " + entry.getStatus(), "Staff ID: " + entry.getStaffId()));
             }
         }
-        
+
         java.time.LocalDateTime submitted = req.getDateRequested();
         if (submitted != null) {
             events.removeIf(ev -> ev.at != null && ev.at.isBefore(submitted));
         }
         events.sort((a, b) -> a.at.compareTo(b.at));
+
         JPanel timeline = new JPanel();
         timeline.setLayout(new BoxLayout(timeline, BoxLayout.Y_AXIS));
         timeline.setBackground(Color.WHITE);
         timeline.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+
         if (events.isEmpty()) {
             JLabel none = new JLabel("No updates recorded for this request.");
             none.setFont(new Font("SansSerif", Font.PLAIN, 13));
@@ -676,7 +662,10 @@ public class StaffMenuFrame extends JFrame {
         } else {
             for (int i = 0; i < events.size(); i++) {
                 TimelineEvent ev = events.get(i);
-                timeline.add(buildTimelineRow(ev, i == events.size() - 1));
+                timeline.add(buildTimelineRow(ev.action, ev.at, ev.detail));
+                if (i < events.size() - 1) {
+                    timeline.add(Box.createVerticalStrut(10));
+                }
             }
         }
         timeline.add(Box.createVerticalGlue());
@@ -686,37 +675,54 @@ public class StaffMenuFrame extends JFrame {
         return scroll;
     }
 
-    private JComponent buildTimelineRow(TimelineEvent ev, boolean last) {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
-        row.setOpaque(false);
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-        TimelineMarker marker = new TimelineMarker(!last);
-        marker.setPreferredSize(new Dimension(20, 48));
-        row.add(marker, BorderLayout.WEST);
-        JPanel text = new JPanel();
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.setOpaque(false);
-        JLabel aLbl = new JLabel("<html><body style='width:190px'>" + escapeHtml(ev.action == null ? "" : ev.action) + "</body></html>");
-        aLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
-        aLbl.setForeground(DARK_BLUE);
-        aLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        text.add(aLbl);
-        JLabel tLbl = new JLabel(ev.at == null ? "" : ev.at.format(
-                DateTimeFormatter.ofPattern("MMM d, h:mm a")));
-        tLbl.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        tLbl.setForeground(new Color(100, 116, 139));
-        tLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        text.add(tLbl);
-        if (ev.detail != null && !ev.detail.isEmpty()) {
-            JLabel dLbl = new JLabel("<html><body style='width:190px'>" + escapeHtml(ev.detail) + "</body></html>");
-            dLbl.setFont(new Font("SansSerif", Font.PLAIN, 11));
-            dLbl.setForeground(new Color(100, 116, 139));
-            dLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-            text.add(dLbl);
+    private String[] splitAdminAction(String action) {
+        if (action == null || !action.startsWith("Status changed to ") || !action.contains(" by ")) {
+            return new String[]{action, null};
         }
-        row.add(text, BorderLayout.CENTER);
-        return row;
+        int at = action.lastIndexOf(" by ");
+        String title = action.substring(0, at);
+        String who = action.substring(at + 4).trim();
+        if (who.regionMatches(true, 0, "admin ", 0, 6)) {
+            return new String[]{title, "Admin: " + who.substring(6).trim()};
+        }
+        return new String[]{title, "Admin ID: " + who};
+    }
+
+    private JPanel buildTimelineRow(String action, java.time.LocalDateTime at, String detail) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(new Color(248, 250, 252));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel actionLbl = new JLabel(action == null ? "" : action);
+        actionLbl.setFont(new Font("SansSerif", Font.BOLD, 13));
+        actionLbl.setForeground(new Color(15, 23, 42));
+        actionLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(actionLbl);
+
+        String formattedTime = (at != null) ? at.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) : "";
+        JLabel whenLbl = new JLabel(formattedTime);
+        whenLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        whenLbl.setForeground(new Color(100, 116, 139));
+        whenLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(Box.createVerticalStrut(2));
+        card.add(whenLbl);
+
+        if (detail != null && !detail.isEmpty()) {
+            JLabel detailLbl = new JLabel(detail);
+            detailLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            detailLbl.setForeground(new Color(100, 116, 139));
+            detailLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+            card.add(Box.createVerticalStrut(2));
+            card.add(detailLbl);
+        }
+
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+        return card;
     }
 
     private static class TimelineEvent {
@@ -731,40 +737,10 @@ public class StaffMenuFrame extends JFrame {
         }
     }
 
-    private static class TimelineMarker extends JComponent {
-        private final boolean drawLine;
-
-        TimelineMarker(boolean drawLine) {
-            this.drawLine = drawLine;
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
-                int cx = getWidth() / 2;
-                if (drawLine) {
-                    g2.setColor(new Color(170, 186, 210));
-                    g2.setStroke(new BasicStroke(2f));
-                    g2.drawLine(cx, 14, cx, getHeight());
-                }
-                g2.setColor(DARK_BLUE);
-                g2.fillOval(cx - 5, 4, 10, 10);
-            } finally {
-                g2.dispose();
-            }
-        }
-    }
-
-    /** Claims the selected request, or releases it when already claimed by self. */
     private void claimOrReleaseSelected() {
         AssistanceRequest req = getSelectedRequest();
         if (req == null) return;
         if (staff.getStaffId().equals(req.getAssignedStaffId())) {
-            // Already claimed by you. Releasing is not allowed, so nothing to do.
             return;
         }
         if (!"Pending".equalsIgnoreCase(req.getStatus())) {
@@ -784,6 +760,4 @@ public class StaffMenuFrame extends JFrame {
         refreshList(searchField.getText().trim());
         showSelectedHistory();
     }
-
-
 }

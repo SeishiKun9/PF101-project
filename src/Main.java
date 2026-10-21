@@ -14,7 +14,6 @@ public class Main {
         FileManager fileManager = new FileManager();
         seedDummyDataIfEmpty(fileManager);
 
-        // Start the application on the Login Screen
         SwingUtilities.invokeLater(() -> new LoginFrame(fileManager).setVisible(true));
     }
 
@@ -26,7 +25,6 @@ public class Main {
         } catch (Exception ignored) { }
     }
 
-    /** default users and requests if they are empty. */
     private static void seedDummyDataIfEmpty(FileManager fm) {
         if (fm.readUsers().isEmpty()) {
             fm.saveUser(new Admin("admin", "admin123", "ADM1000"));

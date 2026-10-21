@@ -59,19 +59,25 @@ public class FileManager {
             return true;
         } catch (IOException e) {
             System.err.println("Could not save to " + path.getFileName()
-                    + ". Please check the data folder. Error: " + e.getMessage());
+                    + ". Error: " + e.getMessage());
             return false;
         }
     }
 
     private boolean writeLines(Path path, List<String> lines) {
         try {
-            Files.write(path, lines.stream().filter(l -> l != null && !l.trim().isEmpty()).toList(),
-                    StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            List<String> validLines = new ArrayList<>();
+            for (String l : lines) {
+                if (l != null && !l.trim().isEmpty()) {
+                    validLines.add(l);
+                }
+            }
+            Files.write(path, validLines, StandardCharsets.UTF_8, 
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             return true;
         } catch (IOException e) {
             System.err.println("Could not save to " + path.getFileName()
-                    + ". Your old data was kept. Error: " + e.getMessage());
+                    + ". Error: " + e.getMessage());
             return false;
         }
     }
@@ -118,15 +124,15 @@ public class FileManager {
                 case "Resident":
                     return new Resident(name, pass, decodeField(f[3]), decodeField(f[4]), decodeField(f[5]));
                 case "Admin":
-                    return withContact(new Admin(name, pass, decodeField(f[3])), f, 4);
+                    return new Admin(name, pass, decodeField(f[3]));
                 case "MedicalStaff":
-                    return withContact(new MedicalStaff(name, pass, decodeField(f[3])), f, 5);
+                    return new MedicalStaff(name, pass, decodeField(f[3]));
                 case "FoodStaff":
-                    return withContact(new FoodStaff(name, pass, decodeField(f[3])), f, 5);
+                    return new FoodStaff(name, pass, decodeField(f[3]));
                 case "TransportationStaff":
-                    return withContact(new TransportationStaff(name, pass, decodeField(f[3])), f, 5);
+                    return new TransportationStaff(name, pass, decodeField(f[3]));
                 case "Staff":
-                    return withContact(new Staff(name, pass, "Staff", decodeField(f[3]), decodeField(f[4])), f, 5);
+                    return new Staff(name, pass, "Staff", decodeField(f[3]), decodeField(f[4]));
                 default:
                     return null;
             }
@@ -136,28 +142,25 @@ public class FileManager {
         }
     }
 
-    /** Sets address and contact starting at index i. Older lines without them load as empty. */
-    private static User withContact(User user, String[] f, int i) {
-        user.setAddress(i < f.length ? decodeField(f[i]) : "");
-        user.setContactNo(i + 1 < f.length ? decodeField(f[i + 1]) : "");
-        return user;
-    }
-
     public void saveUser(User user) {
         appendLine(USERS, user.toFileLine());
     }
 
     public void saveAllUsers(List<User> users) {
-        writeLines(USERS, users.stream().map(User::toFileLine).toList());
+        List<String> lines = new ArrayList<>();
+        for (User u : users) {
+            lines.add(u.toFileLine());
+        }
+        writeLines(USERS, lines);
     }
 
-
-
     private String generateNextUserId(String prefix, long minimum, Class<? extends User> roleClass) {
-        List<String> ids = readUsers().stream()
-                .filter(roleClass::isInstance)
-                .map(User::getUserId)
-                .toList();
+        List<String> ids = new ArrayList<>();
+        for (User u : readUsers()) {
+            if (roleClass.isInstance(u)) {
+                ids.add(u.getUserId());
+            }
+        }
         return generateNextId(prefix, minimum, ids);
     }
 
@@ -172,7 +175,10 @@ public class FileManager {
     }
 
     public String nextRequestId() {
-        List<String> ids = readRequests().stream().map(AssistanceRequest::getRequestId).toList();
+        List<String> ids = new ArrayList<>();
+        for (AssistanceRequest r : readRequests()) {
+            ids.add(r.getRequestId());
+        }
         return generateNextId("REQ", 3999, ids);
     }
 
@@ -283,14 +289,20 @@ public class FileManager {
             int number = Integer.parseInt(parts[0]);
             if (number > 0) {
                 String unit = parts.length > 1 ? parts[1].trim() : "";
-                String match = units.stream().filter(u -> u.equalsIgnoreCase(unit)).findFirst().orElse("pcs");
+                String match = "pcs";
+                for (String u : units) {
+                    if (u.equalsIgnoreCase(unit)) {
+                        match = u;
+                        break;
+                    }
+                }
                 return new String[]{String.valueOf(number), match};
             }
         } catch (NumberFormatException ignored) { }
         return new String[]{"1", "pcs"};
     }
 
-       private static String extractAssignee(String[] f, int i) {
+    private static String extractAssignee(String[] f, int i) {
         return i < f.length ? decodeField(f[i]).trim() : "";
     }
 
@@ -319,7 +331,11 @@ public class FileManager {
     }
 
     private void rewriteRequests(List<AssistanceRequest> all) {
-        writeLines(REQUESTS, all.stream().map(AssistanceRequest::toFileLine).toList());
+        List<String> lines = new ArrayList<>();
+        for (AssistanceRequest r : all) {
+            lines.add(r.toFileLine());
+        }
+        writeLines(REQUESTS, lines);
     }
 
     public void updateResidentIdInRequests(String oldResidentId, String newResidentId) {
@@ -348,7 +364,6 @@ public class FileManager {
     private void updateResidentIdInHistory(String oldResidentId, String newResidentId) {
         List<String> lines = new ArrayList<>();
         for (ResidentRequestHistory e : readResidentRequestHistory()) {
-            // Bug fix: Put oldResidentId on the left to prevent NullPointerException
             String id = oldResidentId.equals(e.getResidentId()) ? newResidentId : e.getResidentId();
             lines.add(new ResidentRequestHistory(id, e.getRequestId(), e.getRequestType(),
                     e.getAction(), e.getRequestSummary(), e.getUpdatedAt()).toFileLine());
@@ -378,7 +393,8 @@ public class FileManager {
         String[] f = line.split("\\|", -1);
         if (f.length != 6) return null;
         try {
-            return new StaffRequestHistory(f[0], f[1], f[2], f[3], f[4], LocalDateTime.parse(f[5]));
+            return new StaffRequestHistory(f[0], f[1], f[2], f[3], f[4], 
+                    LocalDateTime.parse(f[5], AssistanceRequest.DT_FMT));
         } catch (Exception e) {
             return null;
         }

@@ -13,23 +13,25 @@ public class Admin extends User {
         this.adminId = adminId;
     }
 
-    public String getAdminId() {
-        return adminId;
+    public String getAdminId() { 
+        return adminId; 
     }
 
-    public void setAdminId(String adminId) {
-        this.adminId = adminId;
+    public void setAdminId(String adminId) { 
+        this.adminId = adminId; 
     }
 
     @Override
-    public String getUserId() {
-        return adminId;
+    public String getUserId() { 
+        return adminId; 
     }
 
     public void createUser(User user) {
-        String contactError = user.validateContactDetails();
-        if (contactError != null) {
-            throw new IllegalArgumentException(contactError);
+        if (user instanceof Resident) {
+            String error = ((Resident) user).validateDetails();
+            if (error != null) {
+                throw new IllegalArgumentException(error);
+            }
         }
 
         FileManager fm = new FileManager();
@@ -46,6 +48,10 @@ public class Admin extends User {
         List<User> users = fm.readUsers();
 
         User target = findUser(users, userId);
+        if (target == null) {
+            return;
+        }
+
         if (target instanceof Admin && countAdmins(users) <= 1) {
             throw new IllegalArgumentException("You cannot delete the last Admin account.");
         }
@@ -53,7 +59,12 @@ public class Admin extends User {
             throw new IllegalArgumentException("This resident still has requests and cannot be deleted.");
         }
 
-        users.removeIf(user -> user.getUserId().equalsIgnoreCase(userId));
+        for (int i = 0; i < users.size(); i++) {
+            if (users.get(i).getUserId().equalsIgnoreCase(userId)) {
+                users.remove(i);
+                break;
+            }
+        }
         fm.saveAllUsers(users);
     }
 
@@ -105,8 +116,7 @@ public class Admin extends User {
         }
         request.updateStatus(status);
         new RequestManager(fm).updateRequest(request);
-               fm.recordResidentRequestAction(owner, request,
-                "Status changed to " + status + " by " + getUserId());
+        fm.recordResidentRequestAction(owner, request, "Status changed to " + status + " by " + getUserId());
     }
 
     private Resident findResident(FileManager fm, String residentId) {
@@ -117,7 +127,7 @@ public class Admin extends User {
         }
         return null;
     }
-    
+
     public void deleteRequest(AssistanceRequest request) {
         new FileManager().deleteRequestFromFile(request.getRequestId());
     }
@@ -136,11 +146,9 @@ public class Admin extends User {
 
     @Override
     public String toFileLine() {
-        return String.join("|", "Admin",
-                AssistanceRequest.encodeField(getFullName()),
-                AssistanceRequest.encodeField(getPassword()),
-                AssistanceRequest.encodeField(adminId),
-                AssistanceRequest.encodeField(getAddress()),
-                AssistanceRequest.encodeField(getContactNo()));
+        return "Admin|" 
+                + AssistanceRequest.encodeField(getFullName()) + "|"
+                + AssistanceRequest.encodeField(getPassword()) + "|"
+                + AssistanceRequest.encodeField(adminId);
     }
 }

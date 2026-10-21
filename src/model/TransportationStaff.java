@@ -13,11 +13,12 @@ public class TransportationStaff extends Staff {
         new StaffMenuFrame(this).setVisible(true);
     }
 
-      @Override
+    @Override
     public String toFileLine() {
-        return String.join("|", "TransportationStaff", AssistanceRequest.encodeField(getFullName()),
-                AssistanceRequest.encodeField(getPassword()), AssistanceRequest.encodeField(getStaffId()),
-                AssistanceRequest.encodeField(getAssignedType()),
-                AssistanceRequest.encodeField(getAddress()), AssistanceRequest.encodeField(getContactNo()));
+        return "TransportationStaff|" 
+                + AssistanceRequest.encodeField(getFullName()) + "|"
+                + AssistanceRequest.encodeField(getPassword()) + "|"
+                + AssistanceRequest.encodeField(getStaffId()) + "|"
+                + AssistanceRequest.encodeField(getAssignedType());
     }
 }

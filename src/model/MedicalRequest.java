@@ -9,9 +9,7 @@ public class MedicalRequest extends AssistanceRequest {
 
     private final List<MedicalItem> medicalItems;
 
-    public MedicalRequest(String requestId, String residentId, String location, LocalDateTime timeNeeded,
-                          String additionalDetails, String status, LocalDateTime dateRequested,
-                          List<MedicalItem> medicalItems) {
+    public MedicalRequest(String requestId, String residentId, String location, LocalDateTime timeNeeded, String additionalDetails, String status, LocalDateTime dateRequested, List<MedicalItem> medicalItems) {
         super(requestId, residentId, "Medical", location, timeNeeded, additionalDetails, status, dateRequested);
         this.medicalItems = new ArrayList<>(medicalItems);
     }
@@ -26,31 +24,20 @@ public class MedicalRequest extends AssistanceRequest {
     }
 
     @Override
-    public void displayDetails() {
-        System.out.println(toDisplaySummary());
-    }
-
-    @Override
     public String toDisplaySummary() {
-        return "[Medical] " + getRequestId() + " - " + getStatus() + " - " + medicalItems
-                + " - Location: " + getLocation() + " - Needed: " + getTimeNeeded().format(DT_FMT)
-                + " - " + getAdditionalDetails();
+        return "[Medical] " + getRequestId() + " - " + getStatus() + " - " + medicalItems + " - Location: " + getLocation() + " - Needed: " + getTimeNeeded().format(DT_FMT) + " - " + getAdditionalDetails();
     }
 
     @Override
     public String toFileLine() {
-        StringBuilder line = new StringBuilder(commonFieldsForFile("MEDICAL"));
-        
-        line.append("|").append(medicalItems.size());
+        String line = commonFieldsForFile("MEDICAL") + "|" + medicalItems.size();
         
         for (MedicalItem item : medicalItems) {
-            line.append("|").append(encodeField(item.getName()))
-                .append("|").append(item.getQuantity())
-                .append("|").append(encodeField(item.getUnit()));
+            line += "|" + encodeField(item.getName())
+                 + "|" + item.getQuantity()
+                 + "|" + encodeField(item.getUnit());
         }
         
-        line.append("|").append(encodeAssigneeField());
-        
-        return line.toString();
+        return line + "|" + encodeAssigneeField();
     }
 }

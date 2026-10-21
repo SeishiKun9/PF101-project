@@ -30,54 +30,92 @@ public abstract class AssistanceRequest {
         this.dateRequested = dateRequested;
     }
 
-    // --- GETTERS & SETTERS ---
-    public String getRequestId() { return requestId; }
-    public void setRequestId(String requestId) { this.requestId = requestId; }
+    public String getRequestId() { 
+        return requestId; 
+    }
 
-    public String getResidentId() { return residentId; }
-    public void setResidentId(String residentId) { this.residentId = residentId; }
+    public void setRequestId(String requestId) {
+         this.requestId = requestId; 
+        }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public String getResidentId() {
+         return residentId; 
+        }
 
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
+    public void setResidentId(String residentId) {
+         this.residentId = residentId; 
+        }
 
-    public LocalDateTime getTimeNeeded() { return timeNeeded; }
-    public void setTimeNeeded(LocalDateTime timeNeeded) { this.timeNeeded = timeNeeded; }
+    public String getType() {
+         return type; 
+        }
 
-    public String getAdditionalDetails() { return additionalDetails; }
-    public void setAdditionalDetails(String additionalDetails) { this.additionalDetails = additionalDetails; }
+    public void setType(String type) {
+         this.type = type; 
+        }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public String getLocation() {
+         return location; 
+        }
+    public void setLocation(String location) {
+         this.location = location; 
+        }
 
-    public LocalDateTime getDateRequested() { return dateRequested; }
-    public void setDateRequested(LocalDateTime dateRequested) { this.dateRequested = dateRequested; }
+    public LocalDateTime getTimeNeeded() { 
+        return timeNeeded; 
+    }
 
-    public String getAssignedStaffId() { return assignedStaffId; }
-    public void setAssignedStaffId(String assignedStaffId) { this.assignedStaffId = assignedStaffId; }
+    public void setTimeNeeded(LocalDateTime timeNeeded) {
+         this.timeNeeded = timeNeeded; 
+        }
 
-    // --- BUSINESS LOGIC ---
+    public String getAdditionalDetails() {
+         return additionalDetails; 
+        }
+
+    public void setAdditionalDetails(String additionalDetails) {
+         this.additionalDetails = additionalDetails; 
+        }
+
+    public String getStatus() {
+         return status; 
+        }
+
+    public void setStatus(String status) {
+         this.status = status; 
+        }
+
+    public LocalDateTime getDateRequested() {
+         return dateRequested; 
+        }
+
+    public void setDateRequested(LocalDateTime dateRequested) {
+         this.dateRequested = dateRequested; 
+        }
+
+    public String getAssignedStaffId() {
+         return assignedStaffId; 
+        }
+
+    public void setAssignedStaffId(String assignedStaffId) {
+         this.assignedStaffId = assignedStaffId; 
+        }
     
     public boolean isAssigned() {
         return assignedStaffId != null && !assignedStaffId.trim().isEmpty();
     }
 
-    // Student-friendly check: only these 5 statuses are allowed in the system.
     public static boolean isValidStatus(String status) {
         if (status == null) return false;
         String s = status.trim();
-        if (s.equalsIgnoreCase("Pending")) return true;
-        if (s.equalsIgnoreCase("In Progress")) return true;
-        if (s.equalsIgnoreCase("Help is OTW")) return true;
-        if (s.equalsIgnoreCase("Completed")) return true;
-        if (s.equalsIgnoreCase("Cancelled")) return true;
-        return false;
+        return s.equalsIgnoreCase("Pending")
+            || s.equalsIgnoreCase("In Progress")
+            || s.equalsIgnoreCase("Help is OTW")
+            || s.equalsIgnoreCase("Completed")
+            || s.equalsIgnoreCase("Cancelled");
     }
 
     public void updateStatus(String newStatus) {
-        // Reject invalid statuses with a clear message students can explain.
         if (!isValidStatus(newStatus)) {
             throw new IllegalArgumentException(
                     "Invalid status. Use: Pending, In Progress, Help is OTW, Completed, or Cancelled.");
@@ -93,35 +131,29 @@ public abstract class AssistanceRequest {
         return "[" + type + "] " + requestId + " - " + status + " - " + additionalDetails;
     }
 
-    // --- FILE SAVING HELPERS ---
-
-    /** Fields shared by every request type, in file order. */
     protected String commonFieldsForFile(String recordType) {
-        return String.join("|", 
-                "V2", 
-                encodeField(recordType), 
-                encodeField(requestId),
-                encodeField(residentId), 
-                encodeField(type), 
-                encodeField(location),
-                timeNeeded.format(DT_FMT), 
-                encodeField(additionalDetails), 
-                encodeField(status),
-                dateRequested.format(DT_FMT));
+        return "V2|" 
+                + encodeField(recordType) + "|" 
+                + encodeField(requestId) + "|"
+                + encodeField(residentId) + "|" 
+                + encodeField(type) + "|" 
+                + encodeField(location) + "|"
+                + timeNeeded.format(DT_FMT) + "|" 
+                + encodeField(additionalDetails) + "|" 
+                + encodeField(status) + "|"
+                + dateRequested.format(DT_FMT);
     }
 
     protected String encodeAssigneeField() {
         return assignedStaffId == null ? "" : encodeField(assignedStaffId);
     }
 
-    /** Escapes characters that would break the pipe-separated file format. */
     public static String encodeField(String value) {
         if (value == null) return "";
         return value.replace("%", "%25").replace("|", "%7C")
                 .replace("\r", "%0D").replace("\n", "%0A");
     }
 
-    /** Reverses encodeField. */
     public static String decodeField(String value) {
         if (value == null) return "";
         return value.replace("%7C", "|").replace("%0D", "\r")

@@ -6,9 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 
-/**
- * Formal login window for Barangay Assistance System.
- */
+
 public class LoginFrame extends JFrame {
 
     private final FileManager fileManager;
@@ -23,15 +21,18 @@ public class LoginFrame extends JFrame {
 
     private void buildUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        setResizable(true);
+    
         setSize(860, 530);
+        setMinimumSize(new Dimension(860, 530));
         setLocationRelativeTo(null);
-        setResizable(false);
+
         setLayout(new BorderLayout());
 
-        // Top header bar
+
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(15, 40, 80));
-        headerPanel.setPreferredSize(new Dimension(860, 90));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(18, 40, 18, 40));
 
         JLabel titleLabel = new JLabel("OTW: Barangay Assistance System");
@@ -52,11 +53,11 @@ public class LoginFrame extends JFrame {
         headerPanel.add(titleBox, BorderLayout.WEST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Center form area
+  
         JPanel centerPanel = new JPanel(new GridBagLayout());
         centerPanel.setBackground(new Color(245, 247, 250));
 
-        // Form card
+
         JPanel formCard = new JPanel();
         formCard.setLayout(new BoxLayout(formCard, BoxLayout.Y_AXIS));
         formCard.setBackground(Color.WHITE);
@@ -138,17 +139,15 @@ public class LoginFrame extends JFrame {
         centerPanel.add(formCard);
         add(centerPanel, BorderLayout.CENTER);
 
-        // Bottom footer
         JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         footerPanel.setBackground(new Color(230, 235, 242));
-        footerPanel.setPreferredSize(new Dimension(860, 36));
-        JLabel footerLabel = new JLabel("Authorized personnel only  •  Barangay Local Government Unit");
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+        JLabel footerLabel = new JLabel("Authorized personnel only  •  Contact Admin if need assistance.");
         footerLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
         footerLabel.setForeground(new Color(90, 100, 120));
         footerPanel.add(footerLabel);
         add(footerPanel, BorderLayout.SOUTH);
 
-        // Actions
         loginBtn.addActionListener(e -> attemptLogin());
         passwordField.addActionListener(e -> attemptLogin());
         userIdField.addActionListener(e -> attemptLogin());

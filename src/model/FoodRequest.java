@@ -8,9 +8,7 @@ import java.util.List;
 public class FoodRequest extends AssistanceRequest {
     private final List<FoodItem> foodItems;
 
-    public FoodRequest(String requestId, String residentId, String location, LocalDateTime timeNeeded,
-                       String additionalDetails, String status, LocalDateTime dateRequested,
-                       List<FoodItem> foodItems) {
+    public FoodRequest(String requestId, String residentId, String location, LocalDateTime timeNeeded, String additionalDetails, String status, LocalDateTime dateRequested, List<FoodItem> foodItems) {
         super(requestId, residentId, "Food", location, timeNeeded, additionalDetails, status, dateRequested);
         this.foodItems = new ArrayList<>(foodItems);
     }
@@ -25,31 +23,20 @@ public class FoodRequest extends AssistanceRequest {
     }
 
     @Override
-    public void displayDetails() {
-        System.out.println(toDisplaySummary());
-    }
-
-    @Override
     public String toDisplaySummary() {
-        return "[Food] " + getRequestId() + " - " + getStatus() + " - " + foodItems
-                + " - Location: " + getLocation() + " - Needed: " + getTimeNeeded().format(DT_FMT)
-                + " - " + getAdditionalDetails();
+        return "[Food] " + getRequestId() + " - " + getStatus() + " - " + foodItems + " - Location: " + getLocation() + " - Needed: " + getTimeNeeded().format(DT_FMT) + " - " + getAdditionalDetails();
     }
 
     @Override
     public String toFileLine() {
-        StringBuilder line = new StringBuilder(commonFieldsForFile("FOOD"));
-    
-        line.append("|").append(foodItems.size());
+        String line = commonFieldsForFile("FOOD") + "|" + foodItems.size();
     
         for (FoodItem item : foodItems) {
-            line.append("|").append(encodeField(item.getName()))
-                .append("|").append(item.getQuantity())
-                .append("|").append(encodeField(item.getUnit()));
+            line += "|" + encodeField(item.getName())
+                 + "|" + item.getQuantity()
+                 + "|" + encodeField(item.getUnit());
         }
         
-        line.append("|").append(encodeAssigneeField());
-        
-        return line.toString();
+        return line + "|" + encodeAssigneeField();
     }
 }

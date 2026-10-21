@@ -8,16 +8,16 @@ public class TransportationRequest extends AssistanceRequest {
     private String destination;
     private int passengerCount;
 
-    public TransportationRequest(String requestId, String residentId, String pickupLocation, String destination, int passengerCount, LocalDateTime timeNeeded, String additionalDetails, String status, LocalDateTime dateRequested) {
+    public TransportationRequest(String requestId, String residentId, String pickupLocation,  String destination, int passengerCount, LocalDateTime timeNeeded,  String additionalDetails, String status, LocalDateTime dateRequested) {
         super(requestId, residentId, "Transportation", pickupLocation, timeNeeded, additionalDetails, status, dateRequested);
         this.pickupLocation = pickupLocation;
         this.destination = destination;
         this.passengerCount = passengerCount;
     }
 
-    public String getPickupLocation() {
-         return pickupLocation; 
-        }
+    public String getPickupLocation() { 
+        return pickupLocation; 
+    }
 
     public void setPickupLocation(String pickupLocation) {
         this.pickupLocation = pickupLocation;
@@ -27,22 +27,18 @@ public class TransportationRequest extends AssistanceRequest {
     public String getDestination() {
          return destination; 
         }
-    public void setDestination(String destination) {
-         this.destination = destination; 
-        }
+
+    public void setDestination(String destination) { 
+        this.destination = destination; 
+    }
     
     public int getPassengerCount() {
          return passengerCount; 
         }
 
     public void setPassengerCount(int passengerCount) {
-         this.passengerCount = passengerCount; 
-        }
-
-    @Override
-    public void displayDetails() {
-        System.out.println(toDisplaySummary());
-    }
+         this.passengerCount = passengerCount;
+         }
 
     @Override
     public String toDisplaySummary() {
@@ -53,12 +49,10 @@ public class TransportationRequest extends AssistanceRequest {
 
     @Override
     public String toFileLine() {
-        StringBuilder line = new StringBuilder(commonFieldsForFile("TRANSPORT"));
-        line.append("|").append(encodeField(pickupLocation))
-            .append("|").append(encodeField(destination))
-            .append("|").append(passengerCount);
-        line.append("|").append(encodeAssigneeField());
-        
-        return line.toString();
+        return commonFieldsForFile("TRANSPORT") + "|"
+                + encodeField(pickupLocation) + "|"
+                + encodeField(destination) + "|"
+                + passengerCount + "|"
+                + encodeAssigneeField();
     }
 }

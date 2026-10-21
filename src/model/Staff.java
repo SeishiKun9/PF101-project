@@ -5,43 +5,40 @@ import storage.RequestManager;
 import ui.StaffMenuFrame;
 
 public class Staff extends User {
-
     private String staffId;
     private String assignedType;
 
     public Staff(String name, String password, String role, String staffId, String assignedType) {
         super(name, password, role);
         this.staffId = staffId;
-        this.assignedType = assignedType;
+        this.assignedType = (assignedType == null) ? "" : assignedType;
     }
 
-    public String getStaffId() {
-        return staffId;
+    public String getStaffId() { 
+        return staffId; 
     }
 
-    public void setStaffId(String staffId) {
-        this.staffId = staffId;
+    public void setStaffId(String staffId) { 
+        this.staffId = staffId; 
     }
 
-    public String getAssignedType() {
-        return assignedType;
+    public String getAssignedType() { 
+        return assignedType; 
     }
 
-    public void setAssignedType(String assignedType) {
-        this.assignedType = assignedType;
+    public void setAssignedType(String assignedType) { 
+        this.assignedType = (assignedType == null) ? "" : assignedType; 
     }
 
     @Override
-    public String getUserId() {
-        return staffId;
+    public String getUserId() { 
+        return staffId; 
     }
 
     public boolean canHandle(AssistanceRequest request) {
-        return request != null && assignedType != null
-                && assignedType.equalsIgnoreCase(request.getType());
+        return request != null && assignedType.equalsIgnoreCase(request.getType());
     }
 
-    /** Claims a Pending request. A request can be held by only one staff member. */
     public void claimRequest(AssistanceRequest request) {
         if (!canHandle(request)) {
             throw new IllegalArgumentException("You cannot handle this request type.");
@@ -57,7 +54,6 @@ public class Staff extends User {
         saveAndRecord(request, "Claimed");
     }
 
-    /** Updates the status of a request this staff member has claimed and that is still open. */
     public void updateRequestStatus(AssistanceRequest request, String newStatus) {
         if (!Admin.isOpen(request)) {
             throw new IllegalStateException("Completed or Cancelled requests cannot be updated.");
@@ -88,13 +84,10 @@ public class Staff extends User {
 
     @Override
     public String toFileLine() {
-        return String.join("|",
-                "Staff",
-                AssistanceRequest.encodeField(getFullName()),
-                AssistanceRequest.encodeField(getPassword()),
-                AssistanceRequest.encodeField(staffId),
-                AssistanceRequest.encodeField(assignedType == null ? "" : assignedType),
-                AssistanceRequest.encodeField(getAddress()),
-                AssistanceRequest.encodeField(getContactNo()));
+        return "Staff|" 
+                + AssistanceRequest.encodeField(getFullName()) + "|"
+                + AssistanceRequest.encodeField(getPassword()) + "|"
+                + AssistanceRequest.encodeField(staffId) + "|"
+                + AssistanceRequest.encodeField(assignedType);
     }
 }

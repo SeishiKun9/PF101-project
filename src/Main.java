@@ -34,19 +34,13 @@ public class Main {
             fm.saveUser(new Resident("Juan Dela Cruz", "res123", "RSD3000", "123 Rizal St.", "917123456"));
         }
 
-        // Default Requests
         if (fm.readRequests().isEmpty()) {
             LocalDateTime now = LocalDateTime.now();
             
             MedicalRequest dummyRequest = new MedicalRequest(
-                "REQ4000", 
-                "RSD3000", 
-                "123 Rizal St.",
-                now.plusDays(1).withHour(9).withMinute(0), 
-                "Needed for hypertension", 
-                "Pending", 
-                now,
-                Arrays.asList(new MedicalItem("Amlodipine", 1, "box"))
+                "REQ4000", "RSD3000", "123 Rizal St.",
+                now.plusDays(1).withHour(9).withMinute(0),  "Needed for hypertension", "Pending", 
+                now, Arrays.asList(new MedicalItem("Amlodipine", 1, "box"))
             );
             
             fm.saveRequest(dummyRequest);

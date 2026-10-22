@@ -1,14 +1,7 @@
-Admin|admin|admin123|ADM1000||
-MedicalStaff|Dr. Santos|med123|STF2000|Medical||
-FoodStaff|Aling Nena|food123|STF2001|Food||
-TransportationStaff|Mang Tomas|trans123|STF2002|Transportation||
+Admin|admin|admin123|ADM1000
+FoodStaff|Aling Nena|food123|STF2001|Food
 Resident|Juan Dela Cruz|res123|RSD3000|123 Rizal St.|917123456
-Resident|Sara|sara123|RSD3001|purok3|09921611211
-MedicalStaff|Nurse evaa|eva123|STF2003|Medical||
-FoodStaff|Santos|santos123|STF2004|Food||
-TransportationStaff|Yoyo|yoy123|STF2005|Transportation||
 Resident|Allen Aguiman|aguiman123|RSD3002|Purok4, Lutao|09921611211
-MedicalStaff|Kathleen|kathleen123|STF2006|Medical
-FoodStaff|Luan|luan123|STF2007|Food
-TransportationStaff|Maggie|Maggie123|STF2008|Transportation
 Resident|Joan|asd|RSD3003|asd|1
+Resident|John Ladaran|1234|RSD3004|purok 3|09921611211
+FoodStaff|del|del|STF2002|Food

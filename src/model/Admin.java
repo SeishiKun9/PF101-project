@@ -43,58 +43,30 @@ public class Admin extends User {
         fm.saveUser(user);
     }
 
-    public void deleteUser(String userId) {
+       public void deleteUser(String userId) {
         FileManager fm = new FileManager();
         List<User> users = fm.readUsers();
 
-        User target = findUser(users, userId);
-        if (target == null) {
-            return;
-        }
-
-        if (target instanceof Admin && countAdmins(users) <= 1) {
-            throw new IllegalArgumentException("You cannot delete the last Admin account.");
-        }
-        if (target instanceof Resident && residentHasRequests(fm, userId)) {
-            throw new IllegalArgumentException("This resident still has requests and cannot be deleted.");
-        }
-
-        for (int i = 0; i < users.size(); i++) {
-            if (users.get(i).getUserId().equalsIgnoreCase(userId)) {
-                users.remove(i);
-                break;
+        for (AssistanceRequest req : new RequestManager(fm).getAllRequests()) {
+            if (req.getResidentId().equals(userId)) {
+                throw new IllegalArgumentException("This resident still has requests and cannot be deleted.");
             }
         }
+
+        for (AssistanceRequest req : new RequestManager(fm).getAllRequests()) {
+            if (userId.equals(req.getAssignedStaffId())) {
+                if (!"Completed".equalsIgnoreCase(req.getStatus()) && !"Cancelled".equalsIgnoreCase(req.getStatus())) {
+                    throw new IllegalArgumentException("This staff member is currently handling request " 
+                            + req.getRequestId() + ".\nThey must finish the request before their account can be deleted.");
+                }
+            }
+        }
+
+        users.removeIf(user -> user.getUserId().equals(userId));
         fm.saveAllUsers(users);
     }
 
-    private User findUser(List<User> users, String userId) {
-        for (User user : users) {
-            if (user.getUserId().equalsIgnoreCase(userId)) {
-                return user;
-            }
-        }
-        return null;
-    }
 
-    private int countAdmins(List<User> users) {
-        int count = 0;
-        for (User user : users) {
-            if (user instanceof Admin) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private boolean residentHasRequests(FileManager fm, String residentId) {
-        for (AssistanceRequest request : fm.readRequests()) {
-            if (residentId.equalsIgnoreCase(request.getResidentId())) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     public void manageUser(String userId) {
         System.out.println(getFullName() + " is managing user " + userId + ".");

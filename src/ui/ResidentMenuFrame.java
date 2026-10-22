@@ -329,15 +329,15 @@ public class ResidentMenuFrame extends JFrame {
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Row 1: Resident ID | Contact No
+      
         grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
         grid.add(makeFieldBlock("Contact No", resident.getContactNo()));
 
-        // Row 2: Date Needed | Date Submitted
+
         grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
         grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
 
-        // Row 3: Route & No. of Passengers (for Transpo) OR Location (for Food & Medical)
+      
         if (req instanceof TransportationRequest) {
             TransportationRequest tr = (TransportationRequest) req;
             String routeVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();

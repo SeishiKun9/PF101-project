@@ -40,5 +40,7 @@ PF101-project/
 │       └── AdminMenuFrame.java     # Includes Create User dialog
 └── README.md
 ```
+
+Get-ChildItem -Recurse -Filter *.class | Remove-Item -Force
 javac -d bin (Get-ChildItem -Path src -Recurse -Filter *.java | ForEach-Object { $_.FullName })
 java -cp bin Main

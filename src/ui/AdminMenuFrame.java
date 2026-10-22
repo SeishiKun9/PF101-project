@@ -124,7 +124,32 @@ public class AdminMenuFrame extends JFrame {
         setLayout(new BorderLayout());
         getContentPane().setBackground(new Color(245, 247, 250));
 
-        // Header
+        JMenuBar menuBar = new JMenuBar();
+        menuBar.setBackground(Color.WHITE);
+        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 225, 230)));
+        JMenu adminMenu = new JMenu("Admin Menu");
+        adminMenu.setFont(adminMenu.getFont().deriveFont(Font.BOLD, 12f));
+        JMenuItem createMenuItem = new JMenuItem("+ Create User");
+        JMenuItem editMenuItem = new JMenuItem("Manage Selected User");
+        JMenuItem historyMenuItem = new JMenuItem("View User History");
+        JMenuItem myHistoryMenuItem = new JMenuItem("View My Admin History");
+        JMenuItem updateStatusMenuItem = new JMenuItem("Update Selected Request Status");
+        JMenuItem refreshReqMenuItem = new JMenuItem("Refresh All Requests");
+        JMenuItem deleteReqMenuItem = new JMenuItem("Delete Selected Request");
+        JMenuItem logoutMenuItem = new JMenuItem("Logout");
+        adminMenu.add(createMenuItem);
+        adminMenu.add(editMenuItem);
+        adminMenu.add(historyMenuItem);
+        adminMenu.add(myHistoryMenuItem);
+        adminMenu.addSeparator();
+        adminMenu.add(updateStatusMenuItem);
+        adminMenu.add(refreshReqMenuItem);
+        adminMenu.add(deleteReqMenuItem);
+        adminMenu.addSeparator();
+        adminMenu.add(logoutMenuItem);
+        menuBar.add(adminMenu);
+        setJMenuBar(menuBar);
+
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(DARK_BLUE);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 28, 16, 28));
@@ -143,7 +168,6 @@ public class AdminMenuFrame extends JFrame {
         nameAndMeta.add(Box.createVerticalStrut(4));
         nameAndMeta.add(metaLbl);
         headerPanel.add(nameAndMeta, BorderLayout.WEST);
-
         JButton logoutBtn = createDarkBlueButton("Logout");
         JButton myHistoryBtn = createDarkBlueButton("My History");
         JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
@@ -302,8 +326,12 @@ public class AdminMenuFrame extends JFrame {
 
         // Listeners
         createBtn.addActionListener(e -> createUserDialog());
+        createMenuItem.addActionListener(e -> createUserDialog());
         manageUserBtn.addActionListener(e -> editSelectedUser());
+        editMenuItem.addActionListener(e -> editSelectedUser());
+        historyMenuItem.addActionListener(e -> { admin.viewUserHistory(); });
         myHistoryBtn.addActionListener(e -> viewOwnAdminHistory());
+        myHistoryMenuItem.addActionListener(e -> viewOwnAdminHistory());
         searchUsersBtn.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
         userSearchField.addActionListener(e -> refreshUserList(userSearchField.getText().trim()));
         clearUserSearchBtn.addActionListener(e -> { userSearchField.setText(""); refreshUserList(""); });
@@ -311,8 +339,11 @@ public class AdminMenuFrame extends JFrame {
         searchReqBtn.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
         requestSearchField.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
         clearReqBtn.addActionListener(e -> { requestSearchField.setText(""); refreshRequestList(null); });
+        refreshReqMenuItem.addActionListener(e -> { admin.viewAllRequest(); refreshRequestList(requestSearchField.getText().trim()); });
         updateStatusBtn.addActionListener(e -> updateSelectedRequestStatus());
+        updateStatusMenuItem.addActionListener(e -> updateSelectedRequestStatus());
         deleteRequestBtn.addActionListener(e -> deleteSelectedRequest());
+        deleteReqMenuItem.addActionListener(e -> deleteSelectedRequest());
 
         userList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -335,6 +366,7 @@ public class AdminMenuFrame extends JFrame {
         });
 
         logoutBtn.addActionListener(e -> { admin.logout(); dispose(); new LoginFrame(fileManager).setVisible(true); });
+        logoutMenuItem.addActionListener(e -> { admin.logout(); dispose(); new LoginFrame(fileManager).setVisible(true); });
     }
 
     private void refreshUserList() {
@@ -360,7 +392,7 @@ public class AdminMenuFrame extends JFrame {
         styleActionButton(manageUserBtn, false);
     }
 
-    private void showSelectedUserDetails() {
+     private void showSelectedUserDetails() {
         int idx = userList.getSelectedIndex();
         userDetailsPanel.removeAll();
         if (idx < 0 || idx >= currentUsers.size()) {
@@ -376,6 +408,7 @@ public class AdminMenuFrame extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
 
+        // Name and Role headers (Untouched)
         JLabel nameLbl = new JLabel(u.getFullName());
         nameLbl.setFont(new Font("SansSerif", Font.BOLD, 16));
         nameLbl.setForeground(DARK_BLUE);
@@ -394,20 +427,49 @@ public class AdminMenuFrame extends JFrame {
         JPanel grid = new JPanel(new GridLayout(0, 2, 32, 14));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // User ID is always shown first
         grid.add(makeFieldBlock("User ID", getUserId(u)));
-        grid.add(makeFieldBlock("Role", u.getRole()));
+        
         if (u instanceof Resident) {
             Resident r = (Resident) u;
+            
+            // Count requests for Resident
+            int totalRequests = 0;
+            for (AssistanceRequest req : requestManager.getAllRequests()) {
+                if (req.getResidentId().equals(r.getResidentId())) {
+                    totalRequests++;
+                }
+            }
+            
+            // Re-arranged as requested: UserID | Contact No, then Address | No. of Requests
+            grid.add(makeFieldBlock("Contact No", r.getContactNo()));
             grid.add(makeFieldBlock("Address", r.getAddress()));
-            grid.add(makeFieldBlock("Contact", r.getContactNo()));
+            grid.add(makeFieldBlock("No. of Request Submitted", String.valueOf(totalRequests)));
+            
         } else if (u instanceof Staff) {
-            Staff s = (Staff) u;
-            grid.add(makeFieldBlock("Assigned Type", s.getAssignedType()));
-            grid.add(makeFieldBlock("Staff ID", s.getStaffId()));
+            // Count requests handled by this Staff member
+            int handledCount = 0;
+            for (StaffRequestHistory history : fileManager.readStaffRequestHistory()) {
+                if (history.getStaffId().equals(((Staff) u).getStaffId())) {
+                    handledCount++;
+                }
+            }
+            grid.add(makeFieldBlock("No. of Request Handled", String.valueOf(handledCount)));
+            
         } else if (u instanceof Admin) {
-            grid.add(makeFieldBlock("Admin ID", ((Admin) u).getAdminId()));
-            grid.add(makeFieldBlock("Access", "Full System"));
+            // Count users created by this Admin
+            int staffCreatedCount = 0;
+            for (String[] log : readAdminHistory()) {
+                if (log.length >= 3 && log[2].equals(getUserId(u))) {
+                    if (log[1].startsWith("Created user")) {
+                        staffCreatedCount++;
+                    }
+                }
+            }
+            grid.add(makeFieldBlock("No. of Staff Created", String.valueOf(staffCreatedCount)));
         }
+        
         card.add(grid);
 
         userDetailsPanel.setLayout(new BorderLayout());
@@ -415,6 +477,7 @@ public class AdminMenuFrame extends JFrame {
         userDetailsPanel.revalidate();
         userDetailsPanel.repaint();
     }
+
 
     private void refreshRequestList(String searchTerm) {
         String previousId = getSelectedRequestId();
@@ -687,15 +750,11 @@ public class AdminMenuFrame extends JFrame {
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Row 1: Resident ID | Contact No
         grid.add(makeFieldBlock("Resident ID", req.getResidentId()));
         grid.add(makeFieldBlock("Contact No", submitterContact == null ? "-" : submitterContact));
-
-        // Row 2: Date Needed | Date Submitted
         grid.add(makeFieldBlock("Date Needed", formatDisplayDate(req.getTimeNeeded())));
         grid.add(makeFieldBlock("Date Submitted", formatDisplayDate(req.getDateRequested())));
 
-        // Row 3: Route & No. of Passengers (for Transpo) OR Location (for Food & Medical)
         if (req instanceof TransportationRequest) {
             TransportationRequest tr = (TransportationRequest) req;
             String routeVal = tr.getPickupLocation() + " \u2192 " + tr.getDestination();
@@ -1172,8 +1231,19 @@ public class AdminMenuFrame extends JFrame {
                 "Delete user " + u.getFullName() + "? This action cannot be undone.",
                 "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) return false;
+        
         String userId = getUserId(u);
-        admin.deleteUser(userId);
+        
+        try {
+            admin.deleteUser(userId);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, 
+                    ex.getMessage(), 
+                    "Cannot Delete User", 
+                    JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
         logAdminAction("Deleted user " + userId + " (" + u.getFullName() + ")");
         refreshUserList();
         return true;

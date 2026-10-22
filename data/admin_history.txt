@@ -33,3 +33,7 @@
 2026-10-22T18:21:48|Deleted user RSD3001 (Sara)|ADM1000
 2026-10-22T18:22:12|Deleted user STF2008 (Dr. Santos)|ADM1000
 2026-10-22T18:22:24|Created user STF2002 (FoodStaff)|ADM1000
+2026-10-22T20:00:52|Deleted request REQ4012|ADM1000
+2026-10-22T20:00:58|Changed request REQ4011 status from Pending to In Progress|ADM1000
+2026-10-22T20:01:51|Created user STF2003 (TransportationStaff)|ADM1000
+2026-10-22T20:06:34|Deleted request REQ4011|ADM1000

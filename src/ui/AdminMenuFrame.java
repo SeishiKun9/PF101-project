@@ -43,7 +43,6 @@ public class AdminMenuFrame extends JFrame {
     private final JTextField requestSearchField = new JTextField(14);
     private List<AssistanceRequest> currentRequests = new ArrayList<>();
     private final JButton deleteRequestBtn = new JButton("Delete Request");
-    private final JButton updateStatusBtn = new JButton("Update Status");
     private final JPanel requestListCards = new JPanel(new CardLayout());
     private final JPanel requestHistoryPanel = new JPanel(new BorderLayout());
 
@@ -133,20 +132,20 @@ public class AdminMenuFrame extends JFrame {
         JMenuItem editMenuItem = new JMenuItem("Manage Selected User");
         JMenuItem historyMenuItem = new JMenuItem("View User History");
         JMenuItem myHistoryMenuItem = new JMenuItem("View My Admin History");
-        JMenuItem updateStatusMenuItem = new JMenuItem("Update Selected Request Status");
         JMenuItem refreshReqMenuItem = new JMenuItem("Refresh All Requests");
         JMenuItem deleteReqMenuItem = new JMenuItem("Delete Selected Request");
         JMenuItem logoutMenuItem = new JMenuItem("Logout");
+        
         adminMenu.add(createMenuItem);
         adminMenu.add(editMenuItem);
         adminMenu.add(historyMenuItem);
         adminMenu.add(myHistoryMenuItem);
         adminMenu.addSeparator();
-        adminMenu.add(updateStatusMenuItem);
         adminMenu.add(refreshReqMenuItem);
         adminMenu.add(deleteReqMenuItem);
         adminMenu.addSeparator();
         adminMenu.add(logoutMenuItem);
+        
         menuBar.add(adminMenu);
         setJMenuBar(menuBar);
 
@@ -299,11 +298,9 @@ public class AdminMenuFrame extends JFrame {
         JScrollPane reqDetailsScroll = new JScrollPane(requestDetailsPanel);
         reqDetailsScroll.setBorder(null);
         styleActionButton(deleteRequestBtn, false);
-        styleActionButton(updateStatusBtn, false);
         JPanel reqBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         reqBottom.setBackground(Color.WHITE);
         reqBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
-        reqBottom.add(updateStatusBtn);
         reqBottom.add(deleteRequestBtn);
         JPanel reqMiddle = createTitledPanel("  Request Details", reqDetailsScroll);
         reqMiddle.add(reqBottom, BorderLayout.SOUTH);
@@ -340,8 +337,6 @@ public class AdminMenuFrame extends JFrame {
         requestSearchField.addActionListener(e -> refreshRequestList(requestSearchField.getText().trim()));
         clearReqBtn.addActionListener(e -> { requestSearchField.setText(""); refreshRequestList(null); });
         refreshReqMenuItem.addActionListener(e -> { admin.viewAllRequest(); refreshRequestList(requestSearchField.getText().trim()); });
-        updateStatusBtn.addActionListener(e -> updateSelectedRequestStatus());
-        updateStatusMenuItem.addActionListener(e -> updateSelectedRequestStatus());
         deleteRequestBtn.addActionListener(e -> deleteSelectedRequest());
         deleteReqMenuItem.addActionListener(e -> deleteSelectedRequest());
 
@@ -360,8 +355,6 @@ public class AdminMenuFrame extends JFrame {
                 int idx = requestList.getSelectedIndex();
                 boolean hasSel = idx >= 0 && idx < currentRequests.size();
                 styleActionButton(deleteRequestBtn, hasSel);
-                boolean canUpdate = hasSel && Admin.isOpen(currentRequests.get(idx));
-                styleActionButton(updateStatusBtn, canUpdate);
             }
         });
 
@@ -408,7 +401,6 @@ public class AdminMenuFrame extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createEmptyBorder(20, 28, 20, 28));
 
-        // Name and Role headers (Untouched)
         JLabel nameLbl = new JLabel(u.getFullName());
         nameLbl.setFont(new Font("SansSerif", Font.BOLD, 16));
         nameLbl.setForeground(DARK_BLUE);
@@ -428,13 +420,11 @@ public class AdminMenuFrame extends JFrame {
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // User ID is always shown first
         grid.add(makeFieldBlock("User ID", getUserId(u)));
         
         if (u instanceof Resident) {
             Resident r = (Resident) u;
             
-            // Count requests for Resident
             int totalRequests = 0;
             for (AssistanceRequest req : requestManager.getAllRequests()) {
                 if (req.getResidentId().equals(r.getResidentId())) {
@@ -442,13 +432,11 @@ public class AdminMenuFrame extends JFrame {
                 }
             }
             
-            // Re-arranged as requested: UserID | Contact No, then Address | No. of Requests
             grid.add(makeFieldBlock("Contact No", r.getContactNo()));
             grid.add(makeFieldBlock("Address", r.getAddress()));
             grid.add(makeFieldBlock("No. of Request Submitted", String.valueOf(totalRequests)));
             
         } else if (u instanceof Staff) {
-            // Count requests handled by this Staff member
             int handledCount = 0;
             for (StaffRequestHistory history : fileManager.readStaffRequestHistory()) {
                 if (history.getStaffId().equals(((Staff) u).getStaffId())) {
@@ -458,7 +446,6 @@ public class AdminMenuFrame extends JFrame {
             grid.add(makeFieldBlock("No. of Request Handled", String.valueOf(handledCount)));
             
         } else if (u instanceof Admin) {
-            // Count users created by this Admin
             int staffCreatedCount = 0;
             for (String[] log : readAdminHistory()) {
                 if (log.length >= 3 && log[2].equals(getUserId(u))) {
@@ -510,86 +497,7 @@ public class AdminMenuFrame extends JFrame {
             showSelectedRequestDetails();
             showSelectedRequestHistory();
             styleActionButton(deleteRequestBtn, false);
-            styleActionButton(updateStatusBtn, false);
         }
-    }
-
-    private AssistanceRequest getSelectedRequest() {
-        int idx = requestList.getSelectedIndex();
-        if (idx < 0 || idx >= currentRequests.size()) {
-            JOptionPane.showMessageDialog(this, "Please select a request first.",
-                    "No Selection", JOptionPane.WARNING_MESSAGE);
-            return null;
-        }
-        return currentRequests.get(idx);
-    }
-
-    private void updateSelectedRequestStatus() {
-        AssistanceRequest req = getSelectedRequest();
-        if (req == null) return;
-        if (!Admin.isOpen(req)) {
-            JOptionPane.showMessageDialog(this, "Completed or cancelled requests cannot be updated.",
-                    "Update Not Allowed", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        String oldStatus = req.getStatus();
-        String[] statuses = {"Pending", "In Progress", "Help is OTW", "Completed", "Cancelled"};
-        JComboBox<String> statusBox = new JComboBox<>(statuses);
-        String current = oldStatus == null ? "Pending" : oldStatus.trim();
-        for (int i = 0; i < statuses.length; i++) {
-            if (statuses[i].equalsIgnoreCase(current)) { statusBox.setSelectedIndex(i); break; }
-        }
-        JPanel panel = new JPanel(new GridLayout(0, 2, 12, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
-        panel.setBackground(Color.WHITE);
-        panel.add(boldLabel("Request ID"));
-        panel.add(new JLabel(req.getRequestId()));
-        panel.add(boldLabel("Type"));
-        panel.add(new JLabel(req.getType()));
-        panel.add(boldLabel("Resident ID"));
-        panel.add(new JLabel(req.getResidentId()));
-        panel.add(boldLabel("Current Status"));
-        panel.add(new JLabel(current));
-        panel.add(boldLabel("New Status"));
-        panel.add(statusBox);
-        JDialog dialog = new JDialog(this, "Update Request Status", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.add(panel, BorderLayout.CENTER);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
-        buttons.setBackground(Color.WHITE);
-        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)));
-        JButton saveBtn = createDarkBlueButton("Save Status");
-        JButton cancelBtn = createDarkBlueButton("Cancel");
-        buttons.add(saveBtn);
-        buttons.add(cancelBtn);
-        dialog.add(buttons, BorderLayout.SOUTH);
-        saveBtn.addActionListener(e -> {
-            String newStatus = (String) statusBox.getSelectedItem();
-            try {
-                admin.updateRequestStatus(req, newStatus);
-            } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(dialog, ex.getMessage(),
-                        "Invalid Status", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            logAdminAction("Changed request " + req.getRequestId()
-                    + " status from " + oldStatus + " to " + newStatus);
-            refreshRequestList(requestSearchField.getText().trim());
-            JOptionPane.showMessageDialog(dialog, "Status updated to " + newStatus + ".");
-            dialog.dispose();
-        });
-        cancelBtn.addActionListener(e -> dialog.dispose());
-        dialog.pack();
-        dialog.setMinimumSize(new Dimension(440, 300));
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }
-
-    private JLabel boldLabel(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setForeground(DARK_BLUE);
-        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 12f));
-        return lbl;
     }
 
     private String getSelectedRequestId() {

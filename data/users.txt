@@ -5,3 +5,4 @@ Resident|Allen Aguiman|aguiman123|RSD3002|Purok4, Lutao|09921611211
 Resident|Joan|asd|RSD3003|asd|1
 Resident|John Ladaran|1234|RSD3004|purok 3|09921611211
 FoodStaff|del|del|STF2002|Food
+TransportationStaff|Tomasian|123|STF2003|Transportation

@@ -45,7 +45,7 @@ public class Resident extends User {
          return residentId; 
         }
 
-    // Validation for Resident details
+  
     public String validateDetails() {
         if (address.isEmpty()) {
             return "Address is required for residents.";

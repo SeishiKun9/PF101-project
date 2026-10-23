@@ -66,8 +66,6 @@ public class Admin extends User {
         fm.saveAllUsers(users);
     }
 
-
-
     public void manageUser(String userId) {
         System.out.println(getFullName() + " is managing user " + userId + ".");
     }

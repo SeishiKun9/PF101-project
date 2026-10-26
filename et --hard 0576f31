@@ -1,0 +1,7 @@
+[33md956b38[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{0}: rebase (start): checkout HEAD~3
+[33m0576f31[m[33m ([m[1;31morigin/pinakaFINAL[m[33m, [m[1;32mpinakaFINAL[m[33m)[m HEAD@{1}: reset: moving to HEAD
+[33m0576f31[m[33m ([m[1;31morigin/pinakaFINAL[m[33m, [m[1;32mpinakaFINAL[m[33m)[m HEAD@{2}: commit: LAST NA
+[33md4c985c[m HEAD@{3}: commit: Dili na ka update request ang admin
+[33m8a43729[m[33m ([m[1;32mfix/staff-status-update-after-otw[m[33m)[m HEAD@{4}: checkout: moving from fix/staff-status-update-after-otw to pinakaFINAL
+[33m8a43729[m[33m ([m[1;32mfix/staff-status-update-after-otw[m[33m)[m HEAD@{5}: commit: Unta makareport nata ugma
+[33md956b38[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{6}: commit (initial): Pinakalast nga modify sa code

@@ -1,6 +1,6 @@
 package model;
 
-/** One requested food item and its quantity/unit. */
+
 public class FoodItem {
     private String name;
     private int quantity;

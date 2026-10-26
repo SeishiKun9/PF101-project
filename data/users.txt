@@ -6,3 +6,4 @@ Resident|John Ladaran|1234|RSD3004|purok 3|09921611211
 FoodStaff|del|del|STF2002|Food
 TransportationStaff|Tomasian|123|STF2003|Transportation
 Resident|Sarah Mae Hinayon|asdf|RSD3005|asdf|+12
+Resident|Allen  Lee 32423|LeeAllen123|RSD3006|balay ni allen12334|098765432213456788754

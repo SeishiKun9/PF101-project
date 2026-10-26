@@ -17,7 +17,11 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class AdminMenuFrame extends JFrame {
+<<<<<<< HEAD
 
+=======
+    private static final long serialVersionUID = 1L;
+>>>>>>> origin/main
     private final Admin admin;
     private final FileManager fileManager = new FileManager();
     private final RequestManager requestManager = new RequestManager(fileManager);
@@ -436,12 +440,20 @@ public class AdminMenuFrame extends JFrame {
             grid.add(makeFieldBlock("Address", r.getAddress()));
             grid.add(makeFieldBlock("No. of Request Submitted", String.valueOf(totalRequests)));
             
+<<<<<<< HEAD
          } else if (u instanceof Staff) {
             int handledCount = 0;
             for (StaffRequestHistory history : fileManager.readStaffRequestHistory()) {
                 if (history.getStaffId().equals(((Staff) u).getStaffId()) 
                         && "Claimed".equalsIgnoreCase(history.getStatus())) {
                     handledCount++; 
+=======
+        } else if (u instanceof Staff) {
+            int handledCount = 0;
+            for (StaffRequestHistory history : fileManager.readStaffRequestHistory()) {
+                if (history.getStaffId().equals(((Staff) u).getStaffId())) {
+                    handledCount++;
+>>>>>>> origin/main
                 }
             }
             grid.add(makeFieldBlock("No. of Request Handled", String.valueOf(handledCount)));

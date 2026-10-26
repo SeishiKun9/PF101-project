@@ -66,6 +66,11 @@ public class Admin extends User {
         fm.saveAllUsers(users);
     }
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> origin/main
     public void manageUser(String userId) {
         System.out.println(getFullName() + " is managing user " + userId + ".");
     }

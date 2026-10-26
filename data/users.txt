@@ -1,0 +1,8 @@
+Admin|admin|admin123|ADM1000
+FoodStaff|Aling Nena|food123|STF2001|Food
+Resident|Juan Dela Cruz|res123|RSD3000|123 Rizal St.|917123456
+Resident|Allen Aguiman|aguiman123|RSD3002|Purok4, Lutao|09921611211
+Resident|John Ladaran|1234|RSD3004|purok 3|09921611211
+FoodStaff|del|del|STF2002|Food
+TransportationStaff|Tomasian|123|STF2003|Transportation
+Resident|Sarah Mae Hinayon|asdf|RSD3005|asdf|+12
